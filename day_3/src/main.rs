@@ -69,32 +69,27 @@ fn filter_oxygen(input: &str) -> &str {
 
     let mut index = 0;
     while frontier.len() != 1 {
-        let (zero_counts, one_counts ) = count_digits(&frontier.join("\n"));
+        let (zero_counts, one_counts) = count_digits(&frontier.join("\n"));
         let zero_count = *zero_counts.get(index).unwrap();
         let one_count = *one_counts.get(index).unwrap();
 
-        frontier.retain(|line|
-            keep_oxygen_line(one_count, zero_count, line, index)
-        );
+        frontier.retain(|line| keep_oxygen_line(one_count, zero_count, line, index));
         index += 1;
     }
 
     frontier.last().unwrap()
 }
 
-
 fn filter_co2(input: &str) -> &str {
     let mut frontier: Vec<&str> = input.lines().collect::<Vec<&str>>();
 
     let mut index = 0;
     while frontier.len() != 1 {
-        let (zero_counts, one_counts ) = count_digits(&frontier.join("\n"));
+        let (zero_counts, one_counts) = count_digits(&frontier.join("\n"));
         let zero_count = *zero_counts.get(index).unwrap();
         let one_count = *one_counts.get(index).unwrap();
 
-        frontier.retain(|line|
-            keep_co2_line(one_count, zero_count, line, index)
-        );
+        frontier.retain(|line| keep_co2_line(one_count, zero_count, line, index));
         index += 1;
     }
 
@@ -134,7 +129,6 @@ fn keep_oxygen_line(one_count: u64, zero_count: u64, line: &str, i: usize) -> bo
         }
     }
 }
-
 
 fn keep_co2_line(one_count: u64, zero_count: u64, line: &str, i: usize) -> bool {
     !keep_oxygen_line(one_count, zero_count, line, i)
@@ -177,7 +171,8 @@ mod tests {
 
     #[test]
     fn part_2() {
-        let out = life_support(r#"00100
+        let out = life_support(
+            r#"00100
 11110
 10110
 10111
@@ -189,7 +184,7 @@ mod tests {
 11001
 00010
 01010"#,
-);
+        );
         assert_eq!(out, 230)
     }
 
@@ -211,7 +206,6 @@ mod tests {
         );
         assert_eq!(out, "10111")
     }
-
 
     #[test]
     fn part_2_co2() {
