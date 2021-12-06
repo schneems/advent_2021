@@ -81,9 +81,9 @@ fn part_1(input: &str) -> u32 {
     let mut grid = vec![vec![0; 1000]; 1000];
 
     for line in lines {
-        if line.start.x == line.end.x || line.start.y == line.end.y {
+        // if line.start.x == line.end.x || line.start.y == line.end.y {
             apply(&line, &mut grid);
-        }
+        // }
     }
     // debug_grid(&grid);
 
@@ -143,7 +143,7 @@ mod tests {
         //     debug_grid(&grid);
         // }
         // debug_grid(&grid);
-        assert_eq!(part_1(input), 5);
+        assert_eq!(part_1(input), 12);
     }
 
     #[test]
