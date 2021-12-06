@@ -3,13 +3,13 @@ fn main() {
     println!("{}", out);
 }
 
-#[derive(PartialEq, Eq,Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 struct Line {
     start: Point,
     end: Point,
 }
 
-#[derive(PartialEq, Eq,Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 struct Point {
     x: i16,
     y: i16,
@@ -58,7 +58,6 @@ fn apply(line: &Line, grid: &mut Vec<Vec<i32>>) {
         std::cmp::Ordering::Greater => -1,
     };
 
-
     let mut point = line.start.clone();
     while point != line.end {
         // println!("  at        {:?}", point);
@@ -82,7 +81,7 @@ fn part_1(input: &str) -> u32 {
 
     for line in lines {
         // if line.start.x == line.end.x || line.start.y == line.end.y {
-            apply(&line, &mut grid);
+        apply(&line, &mut grid);
         // }
     }
     // debug_grid(&grid);
@@ -90,8 +89,8 @@ fn part_1(input: &str) -> u32 {
     let mut count = 0;
     for x in 0..1000 {
         for y in 0..1000 {
-            if grid[x][y] >= 2{
-                count+=1;
+            if grid[x][y] >= 2 {
+                count += 1;
             };
         }
     }
@@ -188,5 +187,4 @@ mod tests {
         assert_eq!(grid[8][7], 1);
         assert_eq!(grid[7][7], 1);
     }
-
 }
