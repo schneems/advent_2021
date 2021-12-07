@@ -23,30 +23,47 @@ fn part_1(input: &str) -> u32 {
     let positions = parse(input);
     let target = median(&positions);
 
-    let fuel = positions.iter().map(|x| {
-        let dist = if x > &target {
-            x - &target
-        } else {
-            &target - x
-        };
-        dist
-    } ).sum();
+    let fuel = positions
+        .iter()
+        .map(|x| {
+            let dist = if x > &target {
+                x - &target
+            } else {
+                &target - x
+            };
+            dist
+        })
+        .sum();
+    fuel
+}
+
+fn fuel_for(positions: &Vec<u32>, target: u32) -> u32 {
+    let fuel = positions
+        .iter()
+        .map(|x| {
+            let dist = if x > &target {
+                x - &target
+            } else {
+                &target - x
+            };
+            (0..=dist).sum::<u32>()
+        })
+        .sum();
     fuel
 }
 
 fn part_2(input: &str) -> u32 {
     let positions = parse(input);
-    let target = median(&positions);
+    let min = positions.iter().min().unwrap();
+    let max = positions.iter().max().unwrap();
 
-    let fuel = positions.iter().map(|x| {
-        let dist = if x > &target {
-            x - &target
-        } else {
-            &target - x
-        };
-        (1..dist).sum::<u32>()
-    } ).sum();
-    fuel
+    let mut plans = Vec::new();
+    for i in *min..*max {
+        let f = fuel_for(&positions, i);
+        plans.push(f)
+    }
+
+    *plans.iter().min().unwrap()
 }
 
 #[cfg(test)]
@@ -61,6 +78,6 @@ mod tests {
         assert_eq!(median(&numbers), 2);
 
         assert_eq!(part_1(input), 37);
-        assert_eq!(part_2(input), 206);
+        assert_eq!(part_2(input), 168);
     }
 }
