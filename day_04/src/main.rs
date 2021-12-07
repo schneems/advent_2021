@@ -110,13 +110,12 @@ impl FromStr for Drawing {
     type Err = ParseIntError;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let values = string
+        string
             .trim()
             .split(",")
-            .map(|val| val.parse())
-            .collect::<Result<Vec<u32>, _>>()?;
-
-        Ok(Drawing { values: values })
+            .map(str::parse)
+            .collect::<Result<_,_>()
+            .map(|values| Drawing { values })
     }
 }
 
