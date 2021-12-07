@@ -1,190 +1,148 @@
+// Day 5: Hydrothermal Venture
+// https://adventofcode.com/2021/day/5
+
+#![warn(unused_crate_dependencies)]
+#![warn(clippy::pedantic)]
+
+use std::cmp::{self, Ordering};
+use std::env;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::num::ParseIntError;
+use std::path::Path;
+use std::process;
+use std::str::FromStr;
+
+use counter::Counter;
+
 fn main() {
-    let out = part_1(include_str!("../input_1.txt"));
-    println!("{}", out);
+    let path = env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("One argument required - the input file path!");
+        process::exit(1);
+    });
+    let vent_lines = read_vent_lines(&path);
+    println!(
+        "Part 1: Total points with intersections (excluding diagonals) = {}",
+        total_points_with_intersections(&vent_lines, false)
+    );
+    println!(
+        "Part 2: Total points with intersections (including diagonals) = {}",
+        total_points_with_intersections(&vent_lines, true)
+    );
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+fn read_vent_lines(path: impl AsRef<Path>) -> Vec<Line> {
+    let f = File::open(path).expect("Error opening input file");
+    BufReader::new(f)
+        .lines()
+        .map(|line| {
+            line.expect("Error reading line")
+                .parse::<Line>()
+                .expect("Error parsing line")
+        })
+        .collect()
+}
+
+fn total_points_with_intersections(vent_lines: &[Line], include_diagonals: bool) -> usize {
+    let all_line_points = vent_lines
+        .iter()
+        .filter(|line| include_diagonals || !line.is_diagonal())
+        .flat_map(Line::points_on_line);
+    let occurrences_of_each_point = all_line_points.collect::<Counter<_>>();
+    // If a point was seen more than once, more than one line must pass through it, meaning a line intersection there.
+    let points_with_intersections = occurrences_of_each_point
+        .values()
+        .filter(|&count| *count > 1);
+    points_with_intersections.count()
+}
+
+#[derive(PartialEq, Eq, Hash)]
 struct Line {
     start: Point,
     end: Point,
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
-struct Point {
-    x: i16,
-    y: i16,
-}
-
 impl Line {
-    fn from_str(line: &str) -> Self {
-        if let Some((Some(start), Some(end))) = line.split_once("->").map(|(start, end)| {
-            (
-                start
-                    .trim()
-                    .split_once(",")
-                    .map(|(x, y)| (x.parse().unwrap(), y.parse().unwrap()))
-                    .map(|(x, y)| Point { x, y }),
-                end.trim()
-                    .split_once(",")
-                    .map(|(x, y)| (x.parse().unwrap(), y.parse().unwrap()))
-                    .map(|(x, y)| Point { x, y }),
-            )
-        }) {
-            Line { start, end }
-        } else {
-            panic!("nope")
-        }
+    fn is_diagonal(&self) -> bool {
+        self.start.x != self.end.x && self.start.y != self.end.y
     }
 
-    fn from_input(input: &str) -> Vec<Self> {
-        let mut out = Vec::new();
-        for line in input.trim().lines() {
-            out.push(Line::from_str(line));
-        }
-        out
+    fn points_on_line(&self) -> impl Iterator<Item = Point> + '_ {
+        // Generate the list of points that exist on the line. For example, for a line with
+        // start (0,0) and end (3,3), this returns a Vec with elements:
+        // [(0,0), (1,1), (2,2), (3,3)]
+        // Only supports lines that are vertical, horizontal or at a 45 degree angle.
+        let total_points = 1 + cmp::max(
+            (self.end.x - self.start.x).abs(),
+            (self.end.y - self.start.y).abs(),
+        );
+        let x_step = match self.end.x.cmp(&self.start.x) {
+            Ordering::Less => -1,
+            Ordering::Equal => 0,
+            Ordering::Greater => 1,
+        };
+        let y_step = match self.end.y.cmp(&self.start.y) {
+            Ordering::Less => -1,
+            Ordering::Equal => 0,
+            Ordering::Greater => 1,
+        };
+        (0..total_points).map(move |num| Point {
+            x: self.start.x + num * x_step,
+            y: self.start.y + num * y_step,
+        })
     }
 }
 
-fn apply(line: &Line, grid: &mut Vec<Vec<i32>>) {
-    // unimplemented!();
-    let x_dir: i16 = match line.start.x.cmp(&line.end.x) {
-        std::cmp::Ordering::Less => 1,
-        std::cmp::Ordering::Equal => 0,
-        std::cmp::Ordering::Greater => -1,
-    };
-    let y_dir: i16 = match line.start.y.cmp(&line.end.y) {
-        std::cmp::Ordering::Less => 1,
-        std::cmp::Ordering::Equal => 0,
-        std::cmp::Ordering::Greater => -1,
-    };
+impl FromStr for Line {
+    type Err = ParseIntError;
 
-    let mut point = line.start.clone();
-    while point != line.end {
-        // println!("  at        {:?}", point);
-        // println!("  going to  {:?}", line.end);
-
-        grid[point.x as usize][point.y as usize] += 1;
-        if point.x != line.end.x {
-            point.x += x_dir;
-        }
-        if point.y != line.end.y {
-            point.y += y_dir;
-        }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Example input: "0,9 -> 5,9"
+        let (start, end) = s.split_once(" -> ").unwrap_or_default();
+        Ok(Self {
+            start: start.parse::<Point>()?,
+            end: end.parse::<Point>()?,
+        })
     }
-
-    grid[line.end.x as usize][line.end.y as usize] += 1;
 }
 
-fn part_1(input: &str) -> u32 {
-    let lines = Line::from_input(input);
-    let mut grid = vec![vec![0; 1000]; 1000];
-
-    for line in lines {
-        // if line.start.x == line.end.x || line.start.y == line.end.y {
-        apply(&line, &mut grid);
-        // }
-    }
-    // debug_grid(&grid);
-
-    let mut count = 0;
-    for x in 0..1000 {
-        for y in 0..1000 {
-            if grid[x][y] >= 2 {
-                count += 1;
-            };
-        }
-    }
-    count
+#[derive(PartialEq, Eq, Hash)]
+struct Point {
+    x: i64,
+    y: i64,
 }
 
-fn debug_grid(grid: &Vec<Vec<i32>>) {
-    println!("");
-    for x in 0..grid.len() {
-        println!("{:?}", grid[x])
+impl FromStr for Point {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Example input: "0,9"
+        let (x, y) = s.split_once(',').unwrap_or_default();
+        Ok(Self {
+            x: x.parse::<i64>()?,
+            y: y.parse::<i64>()?,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::{Path, PathBuf};
 
-    #[test]
-    fn lol() {
-        let line = Line::from_str("403,277 -> 403,802");
-        assert_eq!(line.start, Point { x: 403, y: 277 });
-        assert_eq!(line.end, Point { x: 403, y: 802 });
+    fn example_file() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("example.txt")
     }
 
     #[test]
-    fn lulz_full() {
-        let input = r#"
-0,9 -> 5,9
-8,0 -> 0,8
-9,4 -> 3,4
-2,2 -> 2,1
-7,0 -> 7,4
-6,4 -> 2,0
-0,9 -> 2,9
-3,4 -> 1,4
-0,0 -> 8,8
-5,5 -> 8,2
-        "#;
-
-        // let lines = Line::from_input(input);
-        // assert_eq!(lines.len(), 10);
-
-        // let mut grid = vec![vec![0; 10]; 10];
-        // debug_grid(&grid);
-
-        // for line in lines {
-        //     // println!("\n{:?}", line);
-        //     // apply(&line, &mut grid);
-        //     debug_grid(&grid);
-        // }
-        // debug_grid(&grid);
-        assert_eq!(part_1(input), 12);
+    fn part_one_example() {
+        let vent_lines = read_vent_lines(&example_file());
+        assert_eq!(total_points_with_intersections(&vent_lines, false), 5);
     }
 
     #[test]
-    fn horizontal() {
-        let input = r#"
-1,1 -> 1,3
-        "#;
-
-        let lines = Line::from_input(input);
-        assert_eq!(lines.len(), 1);
-
-        let mut grid = vec![vec![0; 10]; 10];
-
-        // debug_grid(&grid);
-
-        for line in lines {
-            apply(&line, &mut grid);
-        }
-        // debug_grid(&grid);
-
-        assert_eq!(grid[1][1], 1);
-        assert_eq!(grid[1][2], 1);
-        assert_eq!(grid[1][3], 1);
-    }
-    #[test]
-    fn vertical() {
-        let input = r#"
-9,7 -> 7,7
-        "#;
-
-        let lines = Line::from_input(input);
-        assert_eq!(lines.len(), 1);
-
-        let mut grid = vec![vec![0; 10]; 10];
-
-        // debug_grid(&grid);
-
-        for line in lines {
-            apply(&line, &mut grid);
-        }
-        assert_eq!(grid[9][7], 1);
-        assert_eq!(grid[8][7], 1);
-        assert_eq!(grid[7][7], 1);
+    fn part_two_example() {
+        let vent_lines = read_vent_lines(&example_file());
+        assert_eq!(total_points_with_intersections(&vent_lines, true), 12);
     }
 }
