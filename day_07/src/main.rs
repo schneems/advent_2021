@@ -47,6 +47,7 @@ fn fuel_for(positions: &Vec<u32>, target: u32) -> u32 {
                 &target - x
             };
             (0..=dist).sum::<u32>()
+
         })
         .sum();
     fuel
