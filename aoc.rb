@@ -26,7 +26,8 @@ def cargo_new(dir)
 
         #[test]
         fn test_part_1() {
-
+          let input = r#""#;
+          assert_eq!(part_1(input), 99);
         }
     }
   EOM
