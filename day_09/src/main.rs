@@ -31,21 +31,22 @@ fn part_2(input: &str) -> u64 {
 }
 
 fn build_hyperhash(input: &str) -> Hyperhash {
-    let mut hyperhash = HashMap::new();
-
-    for (i, line) in input.trim().lines().enumerate() {
-        for (j, char) in line.chars().enumerate() {
-            let val = char.to_string().parse::<usize>().unwrap();
-            hyperhash.insert(
-                Point {
-                    i: i.try_into().unwrap(),
-                    j: j.try_into().unwrap(),
-                },
-                val,
-            );
-        }
-    }
-    hyperhash
+    input
+        .trim()
+        .lines()
+        .enumerate()
+        .flat_map(move |(i, line)| {
+            line.chars().enumerate().map(move |(j, char)| {
+                (
+                    Point {
+                        i: i.try_into().unwrap(),
+                        j: j.try_into().unwrap(),
+                    },
+                    char.to_string().parse::<usize>().unwrap(),
+                )
+            })
+        })
+        .collect::<Hyperhash>()
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
