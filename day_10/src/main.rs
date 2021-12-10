@@ -23,8 +23,7 @@ fn part_1(input: &str) -> u64 {
     input
         .trim()
         .lines()
-        .map(first_syntax_error)
-        .map(syntax_cost_part_1)
+        .map(cost_first_syntax_error)
         .sum()
 }
 
@@ -52,20 +51,6 @@ fn cost_incomplete(line: &str) -> u64 {
     cost
 }
 
-fn syntax_cost_part_1(input: Option<String>) -> u64 {
-    let paren = String::from(")");
-    let bracket = String::from("]");
-    let curly = String::from("}");
-    let angle = String::from(">");
-    match input {
-        Some(s) if s == paren => 3,
-        Some(s) if s == bracket => 57,
-        Some(s) if s == curly => 1197,
-        Some(s) if s == angle => 25137,
-        _ => 0,
-    }
-}
-
 fn syntax_cost_part_2(input: &str) -> u64 {
     match input {
         ")" => 1,
@@ -76,7 +61,7 @@ fn syntax_cost_part_2(input: &str) -> u64 {
     }
 }
 
-fn first_syntax_error(line: &str) -> Option<String> {
+fn cost_first_syntax_error(line: &str) -> u64 {
     let chars = line.chars();
     let mut stack = Vec::new();
     for char in chars {
@@ -86,11 +71,17 @@ fn first_syntax_error(line: &str) -> Option<String> {
         } else {
             let last = stack.pop().unwrap();
             if char_inverse(&char) != last {
-                return Some(char);
+                return match char.as_str() {
+                    ")" => 3,
+                    "]" => 57,
+                    "}" => 1197,
+                    ">" => 25137,
+                    _ => panic!("nope"),
+                }
             }
         }
     }
-    None
+    0
 }
 
 fn is_opening(char: &str) -> bool {
@@ -127,33 +118,12 @@ mod tests {
 
     #[test]
     fn test_scan_line() {
-        assert_eq!(first_syntax_error("()"), None);
-        assert_eq!(first_syntax_error("([])"), None);
-        assert_eq!(first_syntax_error("<([{}])>"), None);
-        assert_eq!(first_syntax_error("[<>({}){}[([])<>]]"), None);
-        assert_eq!(first_syntax_error("(((((((((())))))))))"), None);
-        assert_eq!(first_syntax_error("(]"), Some(String::from("]")));
-
-        assert_eq!(
-            first_syntax_error("{([(<{}[<>[]}>{[]{[(<()>"),
-            Some(String::from("}"))
-        );
-        assert_eq!(
-            first_syntax_error("[[<[([]))<([[{}[[()]]]"),
-            Some(String::from(")"))
-        );
-        assert_eq!(
-            first_syntax_error("[{[{({}]{}}([{[{{{}}([]"),
-            Some(String::from("]"))
-        );
-        assert_eq!(
-            first_syntax_error("[<(<(<(<{}))><([]([]()"),
-            Some(String::from(")"))
-        );
-        assert_eq!(
-            first_syntax_error("<{([([[(<>()){}]>(<<{{"),
-            Some(String::from(">"))
-        );
+        assert_eq!(cost_first_syntax_error("()"), 0);
+        assert_eq!(cost_first_syntax_error("([])"), 0);
+        assert_eq!(cost_first_syntax_error("<([{}])>"), 0);
+        assert_eq!(cost_first_syntax_error("[<>({}){}[([])<>]]"), 0);
+        assert_eq!(cost_first_syntax_error("(((((((((())))))))))"), 0);
+        assert_eq!(cost_first_syntax_error("(]"), 57);
     }
 
     #[test]
