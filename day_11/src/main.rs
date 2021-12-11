@@ -9,24 +9,24 @@ fn main() {
     println!("part_2: {}", out);
 }
 
-fn part_2(input: &str, steps: u32) -> u64 {
+fn part_2(input: &str, steps: u64) -> u64 {
     let mut hash = build_hyperhash(input);
-    let stop_at = hash.iter().count();
-    for i in 1..=steps {
-        if step(&mut hash) == stop_at as u32 {
-            return i.into();
-        }
-    }
-    panic!("Not found")
+    let stop_at = hash.iter().count() as u64;
+    (1..=steps)
+        .into_iter()
+        .find_map(|i| {
+            if step(&mut hash) == stop_at {
+                Some(i)
+            } else {
+                None
+            }
+        })
+        .unwrap()
 }
 
 fn part_1(input: &str, steps: u32) -> u64 {
     let mut hash = build_hyperhash(input);
-    let mut count = 0;
-    for _ in 0..steps {
-        count += step(&mut hash);
-    }
-    count.into()
+    (0..steps).into_iter().map(|_| step(&mut hash)).sum()
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -52,7 +52,7 @@ impl Point {
     }
 }
 
-fn step(grid: &mut Hyperhash) -> u32 {
+fn step(grid: &mut Hyperhash) -> u64 {
     let mut flashed = Vec::new();
     for (point, octopus) in grid.iter_mut() {
         octopus.energy += 1;
@@ -65,9 +65,9 @@ fn step(grid: &mut Hyperhash) -> u32 {
     while let Some(point) = flashed.pop() {
         if let Some(octopus) = grid.get_mut(&point) {
             match octopus.energy {
-                0 => {} // Already flashed
-                1..=8 => octopus.energy += 1,
-                9..=u32::MAX => {
+                0 => {}                       // Already flashed
+                1..=8 => octopus.energy += 1, // Building energy
+                9.. => {
                     // Flashing
                     count += 1;
                     octopus.energy = 0;
@@ -85,7 +85,7 @@ fn step(grid: &mut Hyperhash) -> u32 {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 struct Octopus {
     point: Point,
-    energy: u32,
+    energy: u8,
 }
 
 fn build_hyperhash(input: &str) -> Hyperhash {
@@ -101,7 +101,7 @@ fn build_hyperhash(input: &str) -> Hyperhash {
                 };
                 let octopus = Octopus {
                     point: point.clone(),
-                    energy: char.to_string().parse::<u32>().unwrap(),
+                    energy: char.to_string().parse().unwrap(),
                 };
                 (point, octopus)
             })
