@@ -73,11 +73,15 @@ fn parse(input: &str) -> Hyperhash {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 struct AnswerPath {
     path: Vec<String>,
+    duplicate: Option<String>,
 }
 
 impl AnswerPath {
     fn new() -> Self {
-        AnswerPath { path: vec![] }
+        AnswerPath {
+            path: vec![],
+            duplicate: None,
+        }
     }
 
     fn last(&self) -> &String {
@@ -86,8 +90,15 @@ impl AnswerPath {
 
     fn push(&mut self, value: String) -> &mut Self {
         if value.to_lowercase() == value {
-            if self.path.iter().all(|x| x != &value) {
-                self.path.push(value);
+            match self.path.iter().filter(|x| x == &&value).count() {
+                0 => self.path.push(value),
+                1 => {
+                    if self.duplicate.is_none() && value != "start" && value != "end" {
+                        self.duplicate = Some(value.clone());
+                        self.path.push(value);
+                    }
+                }
+                _ => {}
             }
         } else {
             self.path.push(value);
@@ -155,6 +166,6 @@ kj-sa
 kj-HN
 kj-dc
         "#;
-        assert_eq!(part_2(input), 3509);
+        assert_eq!(part_2(input), 103);
     }
 }
