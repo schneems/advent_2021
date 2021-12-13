@@ -84,6 +84,18 @@ impl AnswerPath {
         self.path.last().unwrap()
     }
 
+    fn can_push(&self, value: &String) -> bool {
+        if value.chars().last().unwrap().is_ascii_lowercase() {
+            match self.path.iter().filter(|x| x == &value).count() {
+                0 => true,
+                1 => self.duplicate.is_none() && value != "start" && value != "end",
+                _ => false,
+            }
+        } else {
+            true
+        }
+    }
+
     fn push(&mut self, value: String) -> &mut Self {
         if value.chars().last().unwrap().is_ascii_lowercase() {
             match self.path.iter().filter(|x| x == &&value).count() {
@@ -119,9 +131,9 @@ fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
             answers.push(path);
         } else {
             for neighbor in &grid.get(path.last()).unwrap().connected {
-                let mut new_path = path.clone();
-                new_path.push(neighbor.clone());
-                if new_path != path {
+                if path.can_push(neighbor) {
+                    let mut new_path = path.clone();
+                    new_path.push(neighbor.clone());
                     frontier.push(new_path);
                 }
             }
