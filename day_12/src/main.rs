@@ -126,14 +126,26 @@ fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
     }
 
     let mut count = 0;
-    while let Some(path) = frontier.pop() {
+    while let Some(mut path) = frontier.pop() {
         if path.last() == &objective {
             count += 1;
         } else {
-            for neighbor in &grid.get(path.last()).unwrap().connected {
-                if path.can_push(neighbor) {
+            let mut neighbors = grid
+                .get(path.last())
+                .unwrap()
+                .connected
+                .iter()
+                .filter(|s| path.can_push(s))
+                .peekable();
+
+            while let Some(neighbor) = neighbors.next() {
+                let next = neighbor.clone();
+                if neighbors.peek().is_none() {
+                    path.push(next);
+                    frontier.push(path);
+                } else {
                     let mut new_path = path.clone();
-                    new_path.push(neighbor.clone());
+                    new_path.push(next);
                     frontier.push(new_path);
                 }
             }
