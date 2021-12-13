@@ -1,12 +1,8 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use std::collections::HashSet;
-
 type Hyperhash = HashMap<String, Node>;
-// use std::rc::Rc;
 
-// type Hyperhash = HashMap<Point, usize>;
 fn main() {
     let out = part_2(include_str!("../input.txt"));
     println!("part_2: {}", out);
@@ -70,7 +66,7 @@ fn parse(input: &str) -> Hyperhash {
     hash
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 struct AnswerPath {
     path: Vec<String>,
     duplicate: Option<String>,
@@ -108,7 +104,7 @@ impl AnswerPath {
 }
 
 fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
-    let mut answers: HashSet<AnswerPath> = HashSet::new();
+    let mut answers = Vec::new();
     let mut frontier = Vec::new();
 
     for neighbor in &grid.get(&start).unwrap().connected {
@@ -120,7 +116,7 @@ fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
 
     while let Some(path) = frontier.pop() {
         if path.last() == &objective {
-            answers.insert(path);
+            answers.push(path);
         } else {
             for neighbor in &grid.get(path.last()).unwrap().connected {
                 let mut new_path = path.clone();
