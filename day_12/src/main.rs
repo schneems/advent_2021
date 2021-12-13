@@ -116,7 +116,6 @@ impl AnswerPath {
 }
 
 fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
-    let mut answers = Vec::new();
     let mut frontier = Vec::new();
 
     for neighbor in &grid.get(&start).unwrap().connected {
@@ -126,9 +125,10 @@ fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
         frontier.push(history);
     }
 
+    let mut count = 0;
     while let Some(path) = frontier.pop() {
         if path.last() == &objective {
-            answers.push(path);
+            count += 1;
         } else {
             for neighbor in &grid.get(path.last()).unwrap().connected {
                 if path.can_push(neighbor) {
@@ -140,7 +140,7 @@ fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
         }
     }
 
-    answers.len().try_into().unwrap()
+    count
 }
 
 #[cfg(test)]
@@ -157,8 +157,6 @@ A-b
 b-d
 A-end
 b-end"#;
-
-        let hash = parse(input);
 
         assert_eq!(part_2(input), 36);
 
