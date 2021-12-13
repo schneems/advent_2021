@@ -67,51 +67,29 @@ fn parse(input: &str) -> Hyperhash {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-struct AnswerPath {
-    path: Vec<String>,
-    duplicate: Option<String>,
+struct AnswerPath<'a> {
+    path: Vec<&'a str>,
+    duplicate: bool,
 }
 
-impl AnswerPath {
+impl<'a> AnswerPath<'_> {
     fn new() -> Self {
         AnswerPath {
             path: vec![],
-            duplicate: None,
+            duplicate: false,
         }
     }
 
-    fn last(&self) -> &String {
-        self.path.last().unwrap()
-    }
-
-    fn can_push(&self, value: &String) -> bool {
+    fn can_push(&self, value: &str) -> bool {
         if value.chars().last().unwrap().is_ascii_lowercase() {
-            match self.path.iter().filter(|x| x == &value).count() {
+            match self.path.iter().filter(|x| x == &&value).count() {
                 0 => true,
-                1 => self.duplicate.is_none() && value != "start" && value != "end",
+                1 => !self.duplicate && value != "start" && value != "end",
                 _ => false,
             }
         } else {
             true
         }
-    }
-
-    fn push(&mut self, value: String) -> &mut Self {
-        if value.chars().last().unwrap().is_ascii_lowercase() {
-            match self.path.iter().filter(|x| x == &&value).count() {
-                0 => self.path.push(value),
-                1 => {
-                    if self.duplicate.is_none() && value != "start" && value != "end" {
-                        self.duplicate = Some(value.clone());
-                        self.path.push(value);
-                    }
-                }
-                _ => {}
-            }
-        } else {
-            self.path.push(value);
-        }
-        self
     }
 }
 
@@ -120,20 +98,37 @@ fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
 
     for neighbor in &grid.get(&start).unwrap().connected {
         let mut history = AnswerPath::new();
-        history.push(start.clone());
-        history.push(neighbor.clone());
+        history.path.push(&start);
+        history.path.push(&neighbor);
         frontier.push(history);
     }
 
     let mut count = 0;
     while let Some(path) = frontier.pop() {
-        if path.last() == &objective {
+        if path.path.last().unwrap() == &objective {
             count += 1;
         } else {
-            for neighbor in &grid.get(path.last()).unwrap().connected {
+            for neighbor in &grid
+                .get(path.path.last().unwrap() as &str)
+                .unwrap()
+                .connected
+            {
                 if path.can_push(neighbor) {
                     let mut new_path = path.clone();
-                    new_path.push(neighbor.clone());
+                    if neighbor.chars().last().unwrap().is_ascii_lowercase() {
+                        match new_path.path.iter().filter(|x| x == &&neighbor).count() {
+                            0 => new_path.path.push(neighbor),
+                            1 => {
+                                if !new_path.duplicate && neighbor != "start" && neighbor != "end" {
+                                    new_path.duplicate = true;
+                                    new_path.path.push(&neighbor);
+                                }
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        new_path.path.push(&neighbor);
+                    }
                     frontier.push(new_path);
                 }
             }
