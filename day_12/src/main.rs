@@ -85,7 +85,7 @@ impl AnswerPath {
     }
 
     fn push(&mut self, value: String) -> &mut Self {
-        if value.to_lowercase() == value {
+        if value.chars().last().unwrap().is_ascii_lowercase() {
             match self.path.iter().filter(|x| x == &&value).count() {
                 0 => self.path.push(value),
                 1 => {
