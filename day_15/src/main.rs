@@ -144,20 +144,24 @@ fn search(grid: &NumGrid, target: Point) -> i16 {
         }
         let cost = *visited.get(&route.last).unwrap();
 
-        let mut neighbors = Vec::with_capacity(4);
-        for diff in [-1, 1].iter() {
-            neighbors.push(Point {
-                i: route.last.i + diff,
+        for neighbor in [
+            Point {
+                i: route.last.i + 1,
                 j: route.last.j,
-            });
-
-            neighbors.push(Point {
+            },
+            Point {
+                i: route.last.i - 1,
+                j: route.last.j,
+            },
+            Point {
                 i: route.last.i,
-                j: route.last.j + diff,
-            })
-        }
-
-        for neighbor in neighbors {
+                j: route.last.j + 1,
+            },
+            Point {
+                i: route.last.i,
+                j: route.last.j - 1,
+            },
+        ] {
             if let Some(value) = grid.get(&neighbor) {
                 let new_cost = cost + value;
                 if let Some(last_cost) = visited.get(&neighbor) {
