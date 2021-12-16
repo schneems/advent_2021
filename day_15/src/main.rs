@@ -1,13 +1,9 @@
 use std::collections::HashMap;
-// use std::collections::HashSet;
-
-// use std::str::FromStr;
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
 type NumGrid = HashMap<Point, i16>;
-// type StrGrid = HashMap<Point, String>;
 
 #[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Debug, Clone)]
 struct Point {
@@ -128,8 +124,6 @@ fn expand(grid: &NumGrid) -> NumGrid {
     new_grid
 }
 
-// use sorted_vec::ReverseSortedVec;
-
 fn search(grid: &NumGrid, target: Point) -> i16 {
     let start = Point { i: 0, j: 0 };
     let mut frontier = BinaryHeap::new();
@@ -190,24 +184,24 @@ fn search(grid: &NumGrid, target: Point) -> i16 {
     panic!("No such luck")
 }
 
-fn debug(grid: &NumGrid) {
-    let points = grid.iter().map(|(point, _)| point);
-    let max_i = *&points.max_by(|a, b| a.i.cmp(&b.i)).unwrap().i;
-    let points = grid.iter().map(|(point, _)| point);
-    let max_j = *&points.max_by(|a, b| a.j.cmp(&b.j)).unwrap().j;
-    println!("");
-    for i in 0..=max_i {
-        let mut line = Vec::new();
-        for j in 0..=max_j {
-            let out = match grid.get(&Point { i, j }) {
-                Some(x) => x.to_string(),
-                None => ".".to_string(),
-            };
-            line.push(out);
-        }
-        println!("{}", line.join(""));
-    }
-}
+// fn debug(grid: &NumGrid) {
+//     let points = grid.iter().map(|(point, _)| point);
+//     let max_i = *&points.max_by(|a, b| a.i.cmp(&b.i)).unwrap().i;
+//     let points = grid.iter().map(|(point, _)| point);
+//     let max_j = *&points.max_by(|a, b| a.j.cmp(&b.j)).unwrap().j;
+//     println!("");
+//     for i in 0..=max_i {
+//         let mut line = Vec::new();
+//         for j in 0..=max_j {
+//             let out = match grid.get(&Point { i, j }) {
+//                 Some(x) => x.to_string(),
+//                 None => ".".to_string(),
+//             };
+//             line.push(out);
+//         }
+//         println!("{}", line.join(""));
+//     }
+// }
 
 fn parse(input: &str) -> NumGrid {
     input
