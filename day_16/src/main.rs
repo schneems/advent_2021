@@ -88,7 +88,6 @@ struct DataPacket {
 
 struct OperatorPacket {
     header: Header,
-    packet_len: u32,
     packets: Vec<Packet>,
     len: u32,
 }
@@ -140,11 +139,8 @@ impl FromStr for DataPacket {
     type Err = String;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let string = string.to_string();
-        let characters = string.trim().chars().map(String::from);
-
         let header = Header::from_str(&string).unwrap();
-
+        let characters = string.trim().chars().map(String::from);
         let characters = characters.skip(6);
 
         let mut literal_vec = Vec::new();
@@ -159,8 +155,8 @@ impl FromStr for DataPacket {
         let literal = u64::from_str_radix(&literal_vec.join(""), 2).expect("Not a binary number!");
 
         Ok(DataPacket {
-            header: header,
-            literal: literal,
+            header,
+            literal
             len: 3 + 3 + literal_vec.len() as u32 * 5,
         })
     }
@@ -170,9 +166,7 @@ impl FromStr for OperatorPacket {
     type Err = String;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let string = string.to_string();
         let header = Header::from_str(&string).unwrap();
-
         let characters = string.trim().chars().map(String::from);
         let bit_length = match characters
             .clone()
@@ -184,50 +178,59 @@ impl FromStr for OperatorPacket {
             "1" => 11,
             _ => panic!("Not binary {}", &string),
         } as u32;
+
+        let packet_len = u32::from_str_radix(
+            &characters
+                .clone()
+                .skip(7)
+                .take(bit_length as usize)
+                .join(""),
+            2,
+        )
+        .expect("Not bin");
+
         let mut packets = Vec::new();
-
-        let packet_len_str = characters
-            .clone()
-            .skip(7)
-            .take(bit_length as usize)
-            .join("");
-        let packet_len = u32::from_str_radix(&packet_len_str, 2).expect("Not bin");
-
+        let mut offset = 0;
         match bit_length {
             15 => {
-                let packet_chars = characters
-                    .clone()
-                    .skip(7 + bit_length as usize)
-                    .take(packet_len as usize);
-                let mut offset = 0;
                 while offset < packet_len {
-                    let packet =
-                        Packet::from_str(&packet_chars.clone().skip(offset as usize).join(""))
-                            .unwrap();
+                    let packet = Packet::from_str(
+                        &characters
+                            .clone()
+                            .skip(7 + bit_length as usize)
+                            .take(packet_len as usize)
+                            .clone()
+                            .skip(offset as usize)
+                            .join(""),
+                    )
+                    .unwrap();
                     offset += len(&packet);
                     packets.push(packet);
                 }
 
                 Ok(OperatorPacket {
-                    header: header,
-                    packet_len: packet_len,
-                    packets: packets,
+                    header,
+                    packets,
                     len: 3 + 3 + 1 + bit_length + packet_len,
                 })
             }
             11 => {
-                let packet_chars = characters.clone().skip(7 + bit_length as usize);
-                let mut offset = 0;
                 for _ in 0..packet_len {
-                    let s = packet_chars.clone().skip(offset as usize).join("");
-                    let packet = Packet::from_str(&s).unwrap();
+                    let packet = Packet::from_str(
+                        &characters
+                            .clone()
+                            .skip(7 + bit_length as usize)
+                            .clone()
+                            .skip(offset as usize)
+                            .join(""),
+                    )
+                    .unwrap();
                     offset += len(&packet);
                     packets.push(packet);
                 }
                 Ok(OperatorPacket {
-                    header: header,
-                    packet_len: packet_len,
-                    packets: packets,
+                    header,
+                    packets,
                     len: 3 + 3 + 1 + bit_length + offset as u32,
                 })
             }
@@ -343,13 +346,6 @@ mod tests {
                 .unwrap();
         assert_eq!(packet.header.version, 1);
         assert_eq!(packet.header.type_id, 6);
-        assert_eq!(packet.packet_len, 27);
-        assert_eq!(
-            packet.len,
-            "0011100000000000011011110100010100101001000100100"
-                .chars()
-                .count() as u32
-        );
         if let Packet::Data(x) = &packet.packets[0] {
             assert_eq!(x.literal, 10)
         } else {
@@ -369,7 +365,6 @@ mod tests {
                 .unwrap();
         assert_eq!(packet.header.version, 7);
         assert_eq!(packet.header.type_id, 3);
-        assert_eq!(packet.packet_len, 3);
 
         assert_eq!(
             packet.len,
