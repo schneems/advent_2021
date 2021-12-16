@@ -1,6 +1,5 @@
-// use std::collections::HashMap;
+use itertools::Itertools;
 use std::str::FromStr;
-// use std::str::Split;
 
 fn main() {
     let out = part_1(include_str!("../input.txt"));
@@ -24,45 +23,20 @@ struct DataPacket {
     header: Header,
     string: String,
     literal: u16,
+    len: u32,
 }
 
 struct OperatorPacket {
     header: Header,
     string: String,
-    packet_count: u32, // sub_packets: Vec<DataPacket>,
+    packet_len: u32, // sub_packets: Vec<DataPacket>,
     packets: Vec<Packet>,
     len: u32,
 }
 
-// impl OperatorPacket {
-//     fn len(&self) -> u64 {
-//         self.sub_packets
-//         .iter()
-//         .map(|p| p.literal)
-
-//     }
-// }
-
-// struct Operator {
-//     packets: Vec<Packet>,
-//     type_id: u8,
-// }
-
 fn parse(input: &str) {
     unimplemented!()
 }
-
-// fn parse_data(input: &str) -> DataPacket {
-//     // let foo  = 0b001;
-//     // let blerg = "0b110".parse().unwrap();
-//     DataPacket {
-//         version: 1,
-//         type_id: 1,
-//         string: String,
-//     }
-// }
-
-use itertools::Itertools;
 
 impl FromStr for OperatorPacket {
     type Err = String;
@@ -72,6 +46,7 @@ impl FromStr for OperatorPacket {
         let header = Header::from_str(&string).unwrap();
         let mut characters = string.trim().chars().map(String::from);
         let bit_length = match characters
+            .clone()
             .nth(6)
             .unwrap_or_else(|| panic!("string too short {}", &string))
             .as_str()
@@ -79,18 +54,71 @@ impl FromStr for OperatorPacket {
             "0" => 15,
             "1" => 11,
             _ => panic!("Not binary {}", &string),
-        };
-        let packet_count_str = characters.take(bit_length).join("");
-        let packet_count = u32::from_str_radix(&packet_count_str, 2).expect("Not bin");
-        Ok(OperatorPacket {
-            header: header,
-            string: string,
-            packet_count: packet_count,
-            packets: Vec::new(),
-            len: 0,
-        })
+        } as u32;
+        let mut packets = Vec::new();
+
+        let packet_len_str = characters
+            .clone()
+            .skip(7)
+            .take(bit_length as usize)
+            .join("");
+        let packet_len = u32::from_str_radix(&packet_len_str, 2).expect("Not bin");
+
+        match header.type_id {
+            6 => {
+                let packet_chars = characters
+                    .clone()
+                    .skip(7 + bit_length as usize)
+                    .take(packet_len as usize);
+                let mut offset = 0;
+                while offset < packet_len {
+                    let packet =
+                        Packet::from_str(&packet_chars.clone().skip(offset as usize).join(""))
+                            .unwrap();
+                    offset += len(&packet);
+                    packets.push(packet);
+                }
+
+                Ok(OperatorPacket {
+                    header: header,
+                    string: string,
+                    packet_len: packet_len,
+                    packets: packets,
+                    len: 3 + 3 + 1 + bit_length + packet_len,
+                })
+            }
+            3 => {
+                let packet_chars = characters.clone().skip(7 + bit_length as usize);
+                let mut offset = 0;
+                for _ in 0..packet_len {
+                    println!("==");
+                    let s = packet_chars.clone().skip(offset as usize).join("");
+                    println!("{}", s);
+                    let packet = Packet::from_str(&s).unwrap();
+                    offset += len(&packet);
+                    packets.push(packet);
+                }
+                Ok(OperatorPacket {
+                    header: header,
+                    string: string,
+                    packet_len: packet_len,
+                    packets: packets,
+                    len: 3 + 3 + 1 + bit_length + offset as u32,
+                })
+            }
+            _ => panic!("Not a valid type_id"),
+        }
     }
 }
+
+fn len(packet: &Packet) -> u32 {
+    match packet {
+        Packet::Data(x) => x.len,
+        Packet::Operator(x) => x.len,
+    }
+}
+
+impl DataPacket {}
 
 struct Header {
     version: u8,
@@ -101,7 +129,7 @@ impl FromStr for Header {
     type Err = String;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let mut characters = string.trim().chars().map(String::from);
+        let characters = string.trim().chars().map(String::from);
         let version_str = characters.clone().take(3).collect::<Vec<String>>().join("");
         let version = u8::from_str_radix(&version_str, 2).expect("Not a binary number!");
 
@@ -121,8 +149,20 @@ impl FromStr for Header {
 }
 
 enum Packet {
-    OperatorPacket,
-    DataPacket,
+    Operator(OperatorPacket),
+    Data(DataPacket),
+}
+
+impl FromStr for Packet {
+    type Err = String;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let header = Header::from_str(string).unwrap();
+        match header.type_id {
+            4 => Ok(Packet::Data(DataPacket::from_str(string).unwrap())),
+            _ => Ok(Packet::Operator(OperatorPacket::from_str(string).unwrap())),
+        }
+    }
 }
 
 impl FromStr for DataPacket {
@@ -130,11 +170,11 @@ impl FromStr for DataPacket {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let string = string.to_string();
-        let mut characters = string.trim().chars().map(String::from);
+        let characters = string.trim().chars().map(String::from);
 
         let header = Header::from_str(&string).unwrap();
 
-        let mut characters = characters.skip(6);
+        let characters = characters.skip(6);
 
         let mut literal_vec = Vec::new();
         for mut chunk in &characters.chunks(5) {
@@ -151,6 +191,7 @@ impl FromStr for DataPacket {
             header: header,
             string: string,
             literal: literal,
+            len: 3 + 3 + literal_vec.len() as u32 * 5,
         })
     }
 }
@@ -205,6 +246,11 @@ fn char_to_string_binary(c: impl AsRef<str>) -> &'static str {
 mod tests {
     use super::*;
 
+    // #[test]
+    // fn test_advanced() {
+    //     let packet = Packet::from_str("8A004A801A8002F478").unwrap();
+    // }
+
     #[test]
     fn test_lol() {
         let input = r#"38006F45291200"#;
@@ -220,14 +266,41 @@ mod tests {
                 .unwrap();
         assert_eq!(packet.header.version, 1);
         assert_eq!(packet.header.type_id, 6);
-        assert_eq!(packet.packet_count, 27);
+        assert_eq!(packet.packet_len, 27);
+        assert_eq!(
+            packet.len,
+            "0011100000000000011011110100010100101001000100100"
+                .chars()
+                .count() as u32
+        );
+        if let Packet::Data(x) = &packet.packets[0] {
+            assert_eq!(x.literal, 10)
+        } else {
+            panic!("nope");
+        }
 
+        if let Packet::Data(x) = &packet.packets[1] {
+            assert_eq!(x.literal, 20)
+        } else {
+            panic!("nope");
+        }
+
+        assert!(&packet.packets.get(2).is_none());
+
+        println!("==================");
         let packet =
             OperatorPacket::from_str("11101110000000001101010000001100100000100011000001100000")
                 .unwrap();
         assert_eq!(packet.header.version, 7);
         assert_eq!(packet.header.type_id, 3);
-        assert_eq!(packet.packet_count, 3);
+        assert_eq!(packet.packet_len, 3);
+
+        assert_eq!(
+            packet.len,
+            "111011100000000011010100000011001000001000110000011"
+                .chars()
+                .count() as u32
+        );
     }
 
     #[test]
@@ -240,6 +313,7 @@ mod tests {
         assert_eq!(packet.header.version, 6);
         assert_eq!(packet.header.type_id, 4);
         assert_eq!(packet.literal, 2021);
+        assert_eq!(packet.len, "VVVTTTAAAAABBBBBCCCCC".chars().count() as u32);
         // let packet = parse_data(input);
     }
 
