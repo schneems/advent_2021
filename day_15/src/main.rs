@@ -16,7 +16,7 @@ struct Point {
 }
 
 impl Point {
-    fn neighbors_diag(&self) -> Vec<Point> {
+    fn _neighbors_diag(&self) -> Vec<Point> {
         let mut neighbors = Vec::with_capacity(8);
         for diff_i in [-1, 0, 1].iter() {
             for diff_j in [-1, 0, 1].iter() {
@@ -31,7 +31,7 @@ impl Point {
         neighbors
     }
 
-    fn neighbors(&self) -> Vec<Point> {
+    fn _neighbors(&self) -> Vec<Point> {
         let mut neighbors = Vec::with_capacity(8);
         for diff in [-1, 1].iter() {
             neighbors.push(Point {
@@ -55,7 +55,6 @@ impl Point {
 #[derive(PartialOrd, Ord, Eq, PartialEq, Debug)]
 struct Route {
     heuristic: i64,
-    cost: i64,
     last: Point,
 }
 
@@ -63,7 +62,6 @@ impl Route {
     fn new(last: Point) -> Self {
         Route {
             heuristic: 0,
-            cost: 0,
             last: last,
         }
     }
@@ -85,7 +83,7 @@ fn part_1(input: &str) -> i64 {
     let max_j = *&points.max_by(|a, b| a.j.cmp(&b.j)).unwrap().j;
 
     let target = Point { i: max_i, j: max_j };
-    search(&grid, target).cost
+    search(&grid, target)
 }
 
 fn part_2(input: &str) -> i64 {
@@ -98,7 +96,7 @@ fn part_2(input: &str) -> i64 {
     let max_j = *&points.max_by(|a, b| a.j.cmp(&b.j)).unwrap().j;
 
     let target = Point { i: max_i, j: max_j };
-    search(&grid, target).cost
+    search(&grid, target)
 }
 
 fn expand(grid: &NumGrid) -> NumGrid {
@@ -132,22 +130,34 @@ fn expand(grid: &NumGrid) -> NumGrid {
 
 // use sorted_vec::ReverseSortedVec;
 
-fn search(grid: &NumGrid, target: Point) -> Route {
+fn search(grid: &NumGrid, target: Point) -> i64 {
     let start = Point { i: 0, j: 0 };
     let mut frontier = BinaryHeap::new();
-    frontier.push(Reverse(Route::new(start)));
+    let mut visited: HashMap<Point, i64> = HashMap::new();
+    let mut _picture = grid.clone();
 
-    let mut picture = grid.clone();
-
-    // let mut visited = HashSet::new();
-    let mut visited: NumGrid = HashMap::new();
+    frontier.push(Reverse(Route::new(start.clone())));
+    visited.insert(start, 0);
     while let Some(Reverse(route)) = frontier.pop() {
         if route.last == target {
-            return route;
+            return *visited.get(&route.last).unwrap();
         }
-        let cost = route.cost;
+        let cost = *visited.get(&route.last).unwrap();
 
-        for neighbor in route.last.neighbors() {
+        let mut neighbors = Vec::with_capacity(4);
+        for diff in [-1, 1].iter() {
+            neighbors.push(Point {
+                i: route.last.i + diff,
+                j: route.last.j,
+            });
+
+            neighbors.push(Point {
+                i: route.last.i,
+                j: route.last.j + diff,
+            })
+        }
+
+        for neighbor in neighbors {
             if let Some(value) = grid.get(&neighbor) {
                 let new_cost = cost + value;
                 if let Some(last_cost) = visited.get(&neighbor) {
@@ -155,7 +165,6 @@ fn search(grid: &NumGrid, target: Point) -> Route {
                         visited.insert(neighbor.clone(), new_cost);
                         frontier.push(Reverse(Route {
                             heuristic: neighbor.man_dist(&target) + new_cost,
-                            cost: new_cost,
                             last: neighbor,
                         }));
                     }
@@ -163,7 +172,6 @@ fn search(grid: &NumGrid, target: Point) -> Route {
                     visited.insert(neighbor.clone(), new_cost);
                     frontier.push(Reverse(Route {
                         heuristic: neighbor.man_dist(&target) + new_cost,
-                        cost: new_cost,
                         last: neighbor,
                     }));
                 }
