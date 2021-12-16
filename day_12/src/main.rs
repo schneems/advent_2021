@@ -72,7 +72,7 @@ struct AnswerPath<'a> {
     duplicate: bool,
 }
 
-impl<'a> AnswerPath<'_> {
+impl<'a> AnswerPath<'a> {
     fn new() -> Self {
         AnswerPath {
             path: vec![],
@@ -89,6 +89,23 @@ impl<'a> AnswerPath<'_> {
             }
         } else {
             true
+        }
+    }
+
+    fn push(&mut self, neighbor: &'a str) {
+        if neighbor.chars().last().unwrap().is_ascii_lowercase() {
+            match self.path.iter().filter(|x| x == &&neighbor).count() {
+                0 => self.path.push(neighbor),
+                1 => {
+                    if !self.duplicate && neighbor != "start" && neighbor != "end" {
+                        self.duplicate = true;
+                        self.path.push(&neighbor);
+                    }
+                }
+                _ => {}
+            }
+        } else {
+            self.path.push(&neighbor);
         }
     }
 }
@@ -115,20 +132,7 @@ fn count_bfs(grid: &Hyperhash, start: String, objective: String) -> u64 {
             {
                 if path.can_push(neighbor) {
                     let mut new_path = path.clone();
-                    if neighbor.chars().last().unwrap().is_ascii_lowercase() {
-                        match new_path.path.iter().filter(|x| x == &&neighbor).count() {
-                            0 => new_path.path.push(neighbor),
-                            1 => {
-                                if !new_path.duplicate && neighbor != "start" && neighbor != "end" {
-                                    new_path.duplicate = true;
-                                    new_path.path.push(&neighbor);
-                                }
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        new_path.path.push(&neighbor);
-                    }
+                    new_path.push(neighbor);
                     frontier.push(new_path);
                 }
             }
