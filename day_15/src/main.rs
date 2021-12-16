@@ -1,8 +1,10 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
+// use std::collections::HashSet;
+
 // use std::str::FromStr;
 
-use std::iter::StepBy;
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
 type NumGrid = HashMap<Point, i64>;
 // type StrGrid = HashMap<Point, String>;
@@ -128,18 +130,18 @@ fn expand(grid: &NumGrid) -> NumGrid {
     new_grid
 }
 
-use sorted_vec::ReverseSortedVec;
+// use sorted_vec::ReverseSortedVec;
 
 fn search(grid: &NumGrid, target: Point) -> Route {
     let start = Point { i: 0, j: 0 };
-    let mut frontier = ReverseSortedVec::new();
-    frontier.insert(Route::new(start));
+    let mut frontier = BinaryHeap::new();
+    frontier.push(Reverse(Route::new(start)));
 
     let mut picture = grid.clone();
 
     // let mut visited = HashSet::new();
     let mut visited: NumGrid = HashMap::new();
-    while let Some(route) = frontier.pop() {
+    while let Some(Reverse(route)) = frontier.pop() {
         if route.last == target {
             return route;
         }
@@ -151,19 +153,19 @@ fn search(grid: &NumGrid, target: Point) -> Route {
                 if let Some(last_cost) = visited.get(&neighbor) {
                     if new_cost < *last_cost {
                         visited.insert(neighbor.clone(), new_cost);
-                        frontier.insert(Route {
+                        frontier.push(Reverse(Route {
                             heuristic: neighbor.man_dist(&target) + new_cost,
                             cost: new_cost,
                             last: neighbor,
-                        });
+                        }));
                     }
                 } else {
                     visited.insert(neighbor.clone(), new_cost);
-                    frontier.insert(Route {
+                    frontier.push(Reverse(Route {
                         heuristic: neighbor.man_dist(&target) + new_cost,
                         cost: new_cost,
                         last: neighbor,
-                    });
+                    }));
                 }
             }
         }
