@@ -6,11 +6,20 @@ version = 3
 name = "day_15"
 version = "0.1.0"
 dependencies = [
- "sorted-vec",
+ "priority-queue",
 ]
 
 [[package]]
-name = "sorted-vec"
-version = "0.7.0"
+name = "indexmap"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4210e1a17d165a0c1d4a233af1e3b36fb21b1359042767a4d2c73554f5f8c2aa"
+checksum = "7164c96d6e18ccc3ce43f3dedac996c21a220670a106c275b96ad92110401362"
+
+[[package]]
+name = "priority-queue"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12c349103858e4f8dd8eca2788f6d7b2f351ce77517d0227e6ea698f2a6110d2"
+dependencies = [
+ "indexmap",
+]

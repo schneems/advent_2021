@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use priority_queue::PriorityQueue;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
@@ -48,20 +49,20 @@ impl Point {
     }
 }
 
-#[derive(PartialOrd, Ord, Eq, PartialEq, Debug)]
-struct Route {
-    heuristic: i16,
-    last: Point,
-}
+// #[derive(PartialOrd, Ord, Eq, PartialEq, Debug)]
+// struct Route {
+//     heuristic: i16,
+//     last: Point,
+// }
 
-impl Route {
-    fn new(last: Point) -> Self {
-        Route {
-            heuristic: 0,
-            last: last,
-        }
-    }
-}
+// impl Route {
+//     fn new(last: Point) -> Self {
+//         Route {
+//             heuristic: 0,
+//             last: last,
+//         }
+//     }
+// }
 
 fn main() {
     let out = part_1(include_str!("../input.txt"));
@@ -126,52 +127,48 @@ fn expand(grid: &NumGrid) -> NumGrid {
 
 fn search(grid: &NumGrid, target: Point) -> i16 {
     let start = Point { i: 0, j: 0 };
-    let mut frontier = BinaryHeap::new();
+    let mut frontier = PriorityQueue::new();
     let mut visited: HashMap<Point, i16> = HashMap::new();
     let mut _picture = grid.clone();
 
-    frontier.push(Reverse(Route::new(start.clone())));
+    frontier.push(start.clone(), Reverse(0));
     visited.insert(start, 0);
-    while let Some(Reverse(route)) = frontier.pop() {
-        if route.last == target {
-            return *visited.get(&route.last).unwrap();
+    while let Some((point, Reverse(_))) = frontier.pop() {
+        if point == target {
+            return *visited.get(&point).unwrap();
         }
-        let cost = *visited.get(&route.last).unwrap();
+        let cost = *visited.get(&point).unwrap();
 
         for neighbor in [
             Point {
-                i: route.last.i + 1,
-                j: route.last.j,
+                i: point.i + 1,
+                j: point.j,
             },
             Point {
-                i: route.last.i - 1,
-                j: route.last.j,
+                i: point.i - 1,
+                j: point.j,
             },
             Point {
-                i: route.last.i,
-                j: route.last.j + 1,
+                i: point.i,
+                j: point.j + 1,
             },
             Point {
-                i: route.last.i,
-                j: route.last.j - 1,
+                i: point.i,
+                j: point.j - 1,
             },
         ] {
             if let Some(value) = grid.get(&neighbor) {
                 let new_cost = cost + value;
-                if let Some(last_cost) = visited.get_mut(&neighbor) {
+                if let Some(last_cost) = visited.get(&neighbor) {
                     if new_cost < *last_cost {
-                        *last_cost = new_cost;
-                        frontier.push(Reverse(Route {
-                            heuristic: neighbor.man_dist(&target) + new_cost,
-                            last: neighbor,
-                        }));
+                        visited.insert(neighbor.clone(), new_cost);
+                        let heuristic = neighbor.man_dist(&target) + new_cost;
+                        frontier.push_increase(neighbor, Reverse(heuristic));
                     }
                 } else {
                     visited.insert(neighbor.clone(), new_cost);
-                    frontier.push(Reverse(Route {
-                        heuristic: neighbor.man_dist(&target) + new_cost,
-                        last: neighbor,
-                    }));
+                    let heuristic = neighbor.man_dist(&target) + new_cost;
+                    frontier.push_increase(neighbor, Reverse(heuristic));
                 }
             }
         }
