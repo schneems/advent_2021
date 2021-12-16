@@ -11,8 +11,8 @@ type NumGrid = HashMap<Point, i64>;
 
 #[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Debug, Clone)]
 struct Point {
-    i: i64,
-    j: i64,
+    i: i16,
+    j: i16,
 }
 
 impl Point {
@@ -48,7 +48,7 @@ impl Point {
     }
 
     fn man_dist(&self, other: &Self) -> i64 {
-        (self.i - other.i + self.j - other.j).abs()
+        (self.i - other.i + self.j - other.j).abs().into()
     }
 }
 
@@ -206,8 +206,8 @@ fn parse(input: &str) -> NumGrid {
             line.chars().enumerate().map(move |(j, c)| {
                 (
                     Point {
-                        i: i as i64,
-                        j: j as i64,
+                        i: i as i16,
+                        j: j as i16,
                     },
                     c.to_string().parse::<i64>().unwrap(),
                 )
