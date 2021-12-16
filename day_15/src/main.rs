@@ -52,7 +52,7 @@ impl Point {
 
 #[derive(PartialOrd, Ord, Eq, PartialEq, Debug)]
 struct Route {
-    // heuristic: i64,
+    heuristic: i64,
     cost: i64,
     last: Point,
 }
@@ -60,7 +60,7 @@ struct Route {
 impl Route {
     fn new(last: Point) -> Self {
         Route {
-            // heuristic: 0,
+            heuristic: 0,
             cost: 0,
             last: last,
         }
@@ -137,7 +137,8 @@ fn search(grid: &NumGrid, target: Point) -> Route {
 
     let mut picture = grid.clone();
 
-    let mut visited = HashSet::new();
+    // let mut visited = HashSet::new();
+    let mut visited: NumGrid = HashMap::new();
     while let Some(route) = frontier.pop() {
         if route.last == target {
             return route;
@@ -145,13 +146,22 @@ fn search(grid: &NumGrid, target: Point) -> Route {
         let cost = route.cost;
 
         for neighbor in route.last.neighbors() {
-            if !visited.contains(&neighbor) {
-                if let Some(value) = grid.get(&neighbor) {
-                    visited.insert(neighbor.clone());
-                    let route_cost = cost + value;
+            if let Some(value) = grid.get(&neighbor) {
+                let new_cost = cost + value;
+                if let Some(last_cost) = visited.get(&neighbor) {
+                    if new_cost < *last_cost {
+                        visited.insert(neighbor.clone(), new_cost);
+                        frontier.insert(Route {
+                            heuristic: neighbor.man_dist(&target) + new_cost,
+                            cost: new_cost,
+                            last: neighbor,
+                        });
+                    }
+                } else {
+                    visited.insert(neighbor.clone(), new_cost);
                     frontier.insert(Route {
-                        // heuristic: neighbor.man_dist(&target) + route_cost,
-                        cost: route_cost,
+                        heuristic: neighbor.man_dist(&target) + new_cost,
+                        cost: new_cost,
                         last: neighbor,
                     });
                 }
@@ -160,7 +170,7 @@ fn search(grid: &NumGrid, target: Point) -> Route {
 
         // picture.remove(&route.last);
         // debug(&picture);
-        visited.insert(route.last);
+        // visited.insert(route.last);
     }
 
     panic!("No such luck")
