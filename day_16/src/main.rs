@@ -21,17 +21,16 @@ fn part_2(input: &str) -> u64 {
 }
 
 struct DataPacket {
-    version: u8,
-    type_id: u8,
+    header: Header,
     string: String,
     literal: u16,
 }
 
 struct OperatorPacket {
-    version: u8,
-    type_id: u8,
+    header: Header,
     string: String,
     packet_count: u32, // sub_packets: Vec<DataPacket>,
+    packets: Vec<Packet>,
     len: u32,
 }
 
@@ -70,7 +69,7 @@ impl FromStr for OperatorPacket {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         let string = string.to_string();
-        let packet = DataPacket::from_str(&string).unwrap();
+        let header = Header::from_str(&string).unwrap();
         let mut characters = string.trim().chars().map(String::from);
         let bit_length = match characters
             .nth(6)
@@ -84,11 +83,39 @@ impl FromStr for OperatorPacket {
         let packet_count_str = characters.take(bit_length).join("");
         let packet_count = u32::from_str_radix(&packet_count_str, 2).expect("Not bin");
         Ok(OperatorPacket {
-            version: packet.version,
-            type_id: packet.type_id,
+            header: header,
             string: string,
             packet_count: packet_count,
+            packets: Vec::new(),
             len: 0,
+        })
+    }
+}
+
+struct Header {
+    version: u8,
+    type_id: u8,
+}
+
+impl FromStr for Header {
+    type Err = String;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let mut characters = string.trim().chars().map(String::from);
+        let version_str = characters.clone().take(3).collect::<Vec<String>>().join("");
+        let version = u8::from_str_radix(&version_str, 2).expect("Not a binary number!");
+
+        let type_str = characters
+            .clone()
+            .skip(3)
+            .take(3)
+            .collect::<Vec<String>>()
+            .join("");
+        let type_id = u8::from_str_radix(&type_str, 2).expect("Not a binary number!");
+
+        Ok(Header {
+            version: version,
+            type_id: type_id,
         })
     }
 }
@@ -105,16 +132,7 @@ impl FromStr for DataPacket {
         let string = string.to_string();
         let mut characters = string.trim().chars().map(String::from);
 
-        let version_str = characters.clone().take(3).collect::<Vec<String>>().join("");
-        let version = u8::from_str_radix(&version_str, 2).expect("Not a binary number!");
-
-        let type_str = characters
-            .clone()
-            .skip(3)
-            .take(3)
-            .collect::<Vec<String>>()
-            .join("");
-        let type_id = u8::from_str_radix(&type_str, 2).expect("Not a binary number!");
+        let header = Header::from_str(&string).unwrap();
 
         let mut characters = characters.skip(6);
 
@@ -130,8 +148,7 @@ impl FromStr for DataPacket {
         let literal = u16::from_str_radix(&literal_vec.join(""), 2).expect("Not a binary number!");
 
         Ok(DataPacket {
-            version: version,
-            type_id: type_id,
+            header: header,
             string: string,
             literal: literal,
         })
@@ -201,15 +218,15 @@ mod tests {
         let packet =
             OperatorPacket::from_str("00111000000000000110111101000101001010010001001000000000")
                 .unwrap();
-        assert_eq!(packet.version, 1);
-        assert_eq!(packet.type_id, 6);
+        assert_eq!(packet.header.version, 1);
+        assert_eq!(packet.header.type_id, 6);
         assert_eq!(packet.packet_count, 27);
 
         let packet =
             OperatorPacket::from_str("11101110000000001101010000001100100000100011000001100000")
                 .unwrap();
-        assert_eq!(packet.version, 7);
-        assert_eq!(packet.type_id, 3);
+        assert_eq!(packet.header.version, 7);
+        assert_eq!(packet.header.type_id, 3);
         assert_eq!(packet.packet_count, 3);
     }
 
@@ -220,8 +237,8 @@ mod tests {
         assert_eq!(out, String::from("110100101111111000101000"));
 
         let packet = DataPacket::from_str("110100101111111000101000").unwrap();
-        assert_eq!(packet.version, 6);
-        assert_eq!(packet.type_id, 4);
+        assert_eq!(packet.header.version, 6);
+        assert_eq!(packet.header.type_id, 4);
         assert_eq!(packet.literal, 2021);
         // let packet = parse_data(input);
     }
