@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
-type NumGrid = HashMap<Point, i64>;
+type NumGrid = HashMap<Point, i16>;
 // type StrGrid = HashMap<Point, String>;
 
 #[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Debug, Clone)]
@@ -47,14 +47,14 @@ impl Point {
         neighbors
     }
 
-    fn man_dist(&self, other: &Self) -> i64 {
-        (self.i - other.i + self.j - other.j).abs().into()
+    fn man_dist(&self, other: &Self) -> i16 {
+        (self.i - other.i + self.j - other.j).abs()
     }
 }
 
 #[derive(PartialOrd, Ord, Eq, PartialEq, Debug)]
 struct Route {
-    heuristic: i64,
+    heuristic: i16,
     last: Point,
 }
 
@@ -75,7 +75,7 @@ fn main() {
     println!("part_2: {}", out);
 }
 
-fn part_1(input: &str) -> i64 {
+fn part_1(input: &str) -> i16 {
     let grid = parse(input);
     let points = grid.iter().map(|(point, _)| point);
     let max_i = *&points.max_by(|a, b| a.i.cmp(&b.i)).unwrap().i;
@@ -86,7 +86,7 @@ fn part_1(input: &str) -> i64 {
     search(&grid, target)
 }
 
-fn part_2(input: &str) -> i64 {
+fn part_2(input: &str) -> i16 {
     let grid = parse(input);
     let grid = expand(&grid);
 
@@ -130,10 +130,10 @@ fn expand(grid: &NumGrid) -> NumGrid {
 
 // use sorted_vec::ReverseSortedVec;
 
-fn search(grid: &NumGrid, target: Point) -> i64 {
+fn search(grid: &NumGrid, target: Point) -> i16 {
     let start = Point { i: 0, j: 0 };
     let mut frontier = BinaryHeap::new();
-    let mut visited: HashMap<Point, i64> = HashMap::new();
+    let mut visited: HashMap<Point, i16> = HashMap::new();
     let mut _picture = grid.clone();
 
     frontier.push(Reverse(Route::new(start.clone())));
@@ -217,7 +217,7 @@ fn parse(input: &str) -> NumGrid {
                         i: i as i16,
                         j: j as i16,
                     },
-                    c.to_string().parse::<i64>().unwrap(),
+                    c.to_string().parse::<i16>().unwrap(),
                 )
             })
         })
