@@ -5,8 +5,8 @@ fn main() {
     let out = part_1(include_str!("../input.txt"));
     println!("part_1: {}", out);
 
-    // let out = part_2(include_str!("../input.txt"));
-    // println!("part_2: {}", out);
+    let out = part_2(include_str!("../input.txt"));
+    println!("part_2: {}", out);
 }
 
 fn part_1(input: &str) -> u64 {
@@ -15,8 +15,8 @@ fn part_1(input: &str) -> u64 {
 }
 
 fn part_2(input: &str) -> u64 {
-    let _thing = parse(input);
-    unimplemented!()
+    let packet = parse(input);
+    apply(&packet)
 }
 
 fn parse(input: &str) -> Packet {
@@ -140,12 +140,10 @@ impl FromStr for DataPacket {
     type Err = String;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        // println!("input str: {:?}", string);
         let string = string.to_string();
         let characters = string.trim().chars().map(String::from);
 
         let header = Header::from_str(&string).unwrap();
-        println!("Data version {} type id {}", header.version, header.type_id);
 
         let characters = characters.skip(6);
 
@@ -160,10 +158,6 @@ impl FromStr for DataPacket {
         }
         let literal = u64::from_str_radix(&literal_vec.join(""), 2).expect("Not a binary number!");
 
-        println!("vec {:?}", literal_vec);
-        println!("string: {:?} literal: {:?}", string, literal);
-        println!("header {:?}", header);
-
         Ok(DataPacket {
             header: header,
             literal: literal,
@@ -176,14 +170,9 @@ impl FromStr for OperatorPacket {
     type Err = String;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        // println!("input str: {:?}", string);
         let string = string.to_string();
         let header = Header::from_str(&string).unwrap();
 
-        println!(
-            "Operator version {} type id {}",
-            header.version, header.type_id
-        );
         let characters = string.trim().chars().map(String::from);
         let bit_length = match characters
             .clone()
@@ -257,9 +246,60 @@ impl FromStr for OperatorPacket {
 //
 // let s = format!("{:b}", 4);
 
+fn apply(packet: &Packet) -> u64 {
+    match packet {
+        Packet::Operator(op) => {
+            let values = &op.packets.iter().map(apply);
+            match op.header.type_id {
+                0 => values.clone().sum::<u64>(),
+                1 => values.clone().reduce(|accum, item| accum * item).unwrap(),
+                2 => values.clone().min().unwrap(),
+                3 => values.clone().max().unwrap(),
+                5 => {
+                    if values.clone().nth(0).unwrap() > values.clone().nth(1).unwrap() {
+                        1
+                    } else {
+                        0
+                    }
+                }
+                6 => {
+                    if values.clone().nth(0).unwrap() < values.clone().nth(1).unwrap() {
+                        1
+                    } else {
+                        0
+                    }
+                }
+                7 => {
+                    if values.clone().nth(0).unwrap() == values.clone().nth(1).unwrap() {
+                        1
+                    } else {
+                        0
+                    }
+                }
+                _ => panic!("Not supported op type_id {}", op.header.type_id),
+            }
+        }
+        Packet::Data(dat) => dat.literal,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn operators() {
+        let packet = parse("C200B40A82");
+        assert_eq!(apply(&packet), 3);
+
+        assert_eq!(apply(&parse("04005AC33890")), 54);
+        assert_eq!(apply(&parse("880086C3E88112")), 7);
+        assert_eq!(apply(&parse("CE00C43D881120")), 9);
+        assert_eq!(apply(&parse("D8005AC2A8F0")), 1);
+        assert_eq!(apply(&parse("F600BC2D8F")), 0);
+        assert_eq!(apply(&parse("9C005AC2F8F0")), 0);
+        assert_eq!(apply(&parse("9C0141080250320F1802104A08")), 1);
+    }
 
     #[test]
     fn test_sum_versions() {
