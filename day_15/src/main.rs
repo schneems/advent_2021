@@ -158,9 +158,9 @@ fn search(grid: &NumGrid, target: Point) -> i16 {
         ] {
             if let Some(value) = grid.get(&neighbor) {
                 let new_cost = cost + value;
-                if let Some(last_cost) = visited.get(&neighbor) {
+                if let Some(last_cost) = visited.get_mut(&neighbor) {
                     if new_cost < *last_cost {
-                        visited.insert(neighbor.clone(), new_cost);
+                        *last_cost = new_cost;
                         frontier.push(Reverse(Route {
                             heuristic: neighbor.man_dist(&target) + new_cost,
                             last: neighbor,
