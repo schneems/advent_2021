@@ -156,7 +156,7 @@ impl FromStr for DataPacket {
 
         Ok(DataPacket {
             header,
-            literal
+            literal,
             len: 3 + 3 + literal_vec.len() as u32 * 5,
         })
     }
