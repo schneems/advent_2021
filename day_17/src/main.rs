@@ -1,7 +1,6 @@
 // use std::collections::HashMap;
 // use std::str::FromStr;
 use std::cmp::Ordering;
-use std::ops::Range;
 use std::ops::RangeInclusive;
 
 fn main() {
@@ -13,22 +12,22 @@ fn main() {
     let out = part_1(&target);
     println!("part_1: {}", out);
 
-    // let out = part_2(&target);
-    // println!("part_2: {}", out);
+    let out = part_2(&target);
+    println!("part_2: {}", out);
 }
 
 fn part_1(target: &Target) -> i32 {
-    maximize_y(target, &(0, 0), &(0..67), &(0..260))
+    maximize_y(target, &(0, 0), &(0..=67), &(-260..=260))
 }
 
-// fn part_2(target: &Target) -> u64 {
-//     unimplemented!()
-// }
+fn part_2(target: &Target) -> u64 {
+    guesses(target, &(0, 0), &(0..=67), &(-260..=260)).len() as u64
+}
 
 type Point = (i32, i32);
 type Velocity = (i32, i32);
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Probe {
     location: Point,
     velocity: Velocity,
@@ -109,7 +108,12 @@ struct Guess {
     height: i32,
 }
 
-fn maximize_y(target: &Target, start: &Point, x_range: &Range<i32>, y_range: &Range<i32>) -> i32 {
+fn guesses(
+    target: &Target,
+    start: &Point,
+    x_range: &RangeInclusive<i32>,
+    y_range: &RangeInclusive<i32>,
+) -> Vec<Guess> {
     let mut guesses = Vec::new();
     let x_range = x_range.clone();
     for x_vel in x_range.into_iter() {
@@ -132,16 +136,22 @@ fn maximize_y(target: &Target, start: &Point, x_range: &Range<i32>, y_range: &Ra
             }
         }
     }
+    guesses
+}
 
-    let guess = guesses
+fn maximize_y(
+    target: &Target,
+    start: &Point,
+    x_range: &RangeInclusive<i32>,
+    y_range: &RangeInclusive<i32>,
+) -> i32 {
+    let guesses = guesses(target, start, x_range, y_range);
+
+    guesses
         .iter()
         .max_by(|a, b| a.height.cmp(&b.height))
-        .unwrap();
-
-    // println!("{:?}", guesses.len());
-    // (guess.x_vel, guess.y_vel)
-    // println!("{:?}", guess);
-    guess.height
+        .unwrap()
+        .height
 }
 
 #[cfg(test)]
@@ -155,9 +165,12 @@ mod tests {
             y_range: -10..=-5,
         };
 
-        let x_range = 0..10;
-        let y_range = 0..10;
+        let x_range = 0..=30;
+        let y_range = -10..=10;
         assert_eq!(maximize_y(&target, &(0, 0), &x_range, &y_range), 45);
+
+        let guesses = guesses(&target, &(0, 0), &x_range, &y_range);
+        assert_eq!(guesses.len(), 112);
     }
 
     #[test]
@@ -197,24 +210,8 @@ mod tests {
 
         probe.step();
         assert!(&probe.is_beyond(&target));
-
-        // let probe = Probe {
-        //     location: (0, 0),
-        //     velocity: (9, 0),
-        // };
-        // assert_eq!(step(&probe, 1), (9, 0));
-        // assert_eq!(step(&probe, 2), (17, -1));
-        // assert_eq!(step(&probe, 3), (24, -3));
-        // assert_eq!(step(&probe, 4), (30, -6));
     }
 
     #[test]
     fn test_check() {}
-
-    #[test]
-    fn test_parts() {
-        let _input = r#""#;
-        // assert_eq!(part_1(input), 99);
-        // assert_eq!(part_2(input), 99);
-    }
 }
