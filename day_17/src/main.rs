@@ -1,36 +1,67 @@
 // use std::collections::HashMap;
 // use std::str::FromStr;
 use std::cmp::Ordering;
+use std::ops::Range;
 use std::ops::RangeInclusive;
 
 fn main() {
-    let out = part_1(include_str!("../input.txt"));
+    // target area: x=25..67, y=-260..-200
+    let target = Target {
+        x_range: 25..=67,
+        y_range: -260..=-200,
+    };
+    let out = part_1(&target);
     println!("part_1: {}", out);
 
-    let out = part_2(include_str!("../input.txt"));
-    println!("part_2: {}", out);
+    // let out = part_2(&target);
+    // println!("part_2: {}", out);
 }
 
-fn part_1(input: &str) -> u64 {
-    let _thing = parse(input);
-    unimplemented!()
+fn part_1(target: &Target) -> i32 {
+    maximize_y(target, &(0, 0), &(0..67), &(0..260))
 }
 
-fn part_2(input: &str) -> u64 {
-    let _thing = parse(input);
-    unimplemented!()
-}
-
-fn parse(input: &str) {
-    unimplemented!()
-}
+// fn part_2(target: &Target) -> u64 {
+//     unimplemented!()
+// }
 
 type Point = (i32, i32);
 type Velocity = (i32, i32);
 
+#[derive(Clone)]
 struct Probe {
     location: Point,
     velocity: Velocity,
+}
+
+impl Probe {
+    fn step(&mut self) {
+        let (mut x, mut y) = self.location;
+        let (mut x_vel, mut y_vel) = self.velocity;
+
+        x += x_vel;
+        y += y_vel;
+        y_vel -= 1;
+        match x_vel.cmp(&0) {
+            Ordering::Less => x_vel += 1,
+            Ordering::Equal => {}
+            Ordering::Greater => x_vel -= 1,
+        }
+
+        self.location = (x, y);
+        self.velocity = (x_vel, y_vel);
+    }
+
+    fn is_within(&self, target: &Target) -> bool {
+        let (x, y) = self.location;
+        target.x_range.contains(&x) && target.y_range.contains(&y)
+    }
+
+    fn is_beyond(&self, target: &Target) -> bool {
+        let (_, y) = self.location;
+        let (_, y_vel) = self.velocity;
+        y < *target.min_y() && y_vel <= 1
+    }
 }
 
 struct Target {
@@ -39,34 +70,78 @@ struct Target {
 }
 
 impl Target {
-    fn is_within(&self, point: Point) -> bool {
-        let (x, y) = point;
-        self.x_range.contains(&x) && self.y_range.contains(&y)
-    }
-
-    fn is_beyond(&self, point: Point) -> bool {
-        let (_, y) = point;
-        y < *self.y_range.start()
+    fn min_y(&self) -> &i32 {
+        let end_val = self.y_range.end();
+        let start_val = self.y_range.start();
+        if start_val < end_val {
+            start_val
+        } else {
+            end_val
+        }
     }
 }
 
-fn step(probe: &Probe, count: u32) -> Point {
-    let Probe {
-        location: (mut x, mut y),
-        velocity: (mut x_vel, mut y_vel),
-    } = probe;
+enum Shot {
+    Hit(i32),
+    Miss,
+}
 
-    for _ in 0..count {
-        x += x_vel;
-        y += y_vel;
-        y_vel -= 1;
-        match x_vel.cmp(&0) {
-            Ordering::Less => x_vel += 1,
-            Ordering::Equal => {}
-            Ordering::Greater => x_vel -= 1,
-        };
+fn fire(probe: &mut Probe, target: &Target) -> Shot {
+    let mut max_height = i32::MIN;
+    while !probe.is_within(&target) {
+        if probe.is_beyond(&target) {
+            return Shot::Miss;
+        }
+        let height = probe.location.1;
+        if height > max_height {
+            max_height = height
+        }
+        probe.step();
     }
-    (x, y)
+
+    Shot::Hit(max_height)
+}
+
+#[derive(Debug)]
+struct Guess {
+    // x_vel: i32,
+    // y_vel: i32,
+    height: i32,
+}
+
+fn maximize_y(target: &Target, start: &Point, x_range: &Range<i32>, y_range: &Range<i32>) -> i32 {
+    let mut guesses = Vec::new();
+    let x_range = x_range.clone();
+    for x_vel in x_range.into_iter() {
+        let y_range = y_range.clone();
+        for y_vel in y_range.into_iter() {
+            let mut probe = Probe {
+                location: *start,
+                velocity: (x_vel, y_vel),
+            };
+            match fire(&mut probe, target) {
+                Shot::Miss => {}
+                Shot::Hit(height) => {
+                    let guess = Guess {
+                        // x_vel,
+                        // y_vel,
+                        height,
+                    };
+                    guesses.push(guess);
+                }
+            }
+        }
+    }
+
+    let guess = guesses
+        .iter()
+        .max_by(|a, b| a.height.cmp(&b.height))
+        .unwrap();
+
+    // println!("{:?}", guesses.len());
+    // (guess.x_vel, guess.y_vel)
+    // println!("{:?}", guess);
+    guess.height
 }
 
 #[cfg(test)]
@@ -74,8 +149,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn blerg() {
+        let target = Target {
+            x_range: 20..=30,
+            y_range: -10..=-5,
+        };
+
+        let x_range = 0..10;
+        let y_range = 0..10;
+        assert_eq!(maximize_y(&target, &(0, 0), &x_range, &y_range), 45);
+    }
+
+    #[test]
     fn test_physics() {
-        let probe = Probe {
+        let mut probe = Probe {
             location: (0, 0),
             velocity: (7, 2),
         };
@@ -84,28 +171,41 @@ mod tests {
             x_range: 20..=30,
             y_range: -10..=-5,
         };
-        assert_eq!(step(&probe, 1), (7, 2));
-        assert!(!&target.is_within((7, 2)));
-        assert!(!&target.is_beyond((7, 2)));
+        probe.step();
+        assert_eq!(probe.location, (7, 2));
+        assert!(!&probe.is_within(&target));
+        assert!(!&probe.is_beyond(&target));
 
-        assert_eq!(step(&probe, 2), (13, 3));
-        assert_eq!(step(&probe, 3), (18, 3));
-        assert_eq!(step(&probe, 4), (22, 2));
-        assert_eq!(step(&probe, 5), (25, 0));
-        assert_eq!(step(&probe, 6), (27, -3));
-        assert_eq!(step(&probe, 7), (28, -7));
-        assert!(&target.is_within((28, -7)));
-        assert!(!&target.is_beyond((28, -7)));
-        assert!(&target.is_beyond(step(&probe, 8)));
+        probe.step();
+        assert_eq!(probe.location, (13, 3));
+        probe.step();
+        assert_eq!(probe.location, (18, 3));
 
-        let probe = Probe {
-            location: (0, 0),
-            velocity: (9, 0),
-        };
-        assert_eq!(step(&probe, 1), (9, 0));
-        assert_eq!(step(&probe, 2), (17, -1));
-        assert_eq!(step(&probe, 3), (24, -3));
-        assert_eq!(step(&probe, 4), (30, -6));
+        probe.step();
+        assert_eq!(probe.location, (22, 2));
+
+        probe.step();
+        assert_eq!(probe.location, (25, 0));
+
+        probe.step();
+        assert_eq!(probe.location, (27, -3));
+
+        probe.step();
+        assert_eq!(probe.location, (28, -7));
+        assert!(&probe.is_within(&target));
+        assert!(!&probe.is_beyond(&target));
+
+        probe.step();
+        assert!(&probe.is_beyond(&target));
+
+        // let probe = Probe {
+        //     location: (0, 0),
+        //     velocity: (9, 0),
+        // };
+        // assert_eq!(step(&probe, 1), (9, 0));
+        // assert_eq!(step(&probe, 2), (17, -1));
+        // assert_eq!(step(&probe, 3), (24, -3));
+        // assert_eq!(step(&probe, 4), (30, -6));
     }
 
     #[test]
