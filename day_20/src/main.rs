@@ -22,14 +22,28 @@ fn part_1(input: &str) -> u64 {
         mut grid,
         algorithm,
     } = parse(input);
+
+    let min_i = min_i(&grid) - 2;
+    let max_i = max_i(&grid) + 2;
+    let min_j = min_j(&grid) - 2;
+    let max_j = max_j(&grid) + 2;
+
     enhance(&mut grid, &algorithm);
     enhance(&mut grid, &algorithm);
 
-    grid.iter()
-        .filter_map(|(_, v)| if v.as_str() == "#" { Some(1) } else { None })
-        .count()
-        .try_into()
-        .unwrap()
+    let mut count = 0;
+
+    for i in min_i..=max_i {
+        for j in min_j..=max_j {
+            if let Some(s) = grid.get(&Point { i, j }) {
+                if s.as_str() == "#" {
+                    count += 1;
+                }
+            }
+        }
+    }
+
+    count
 }
 
 fn part_2(input: &str) -> u64 {
@@ -80,10 +94,10 @@ impl Point {
 
 fn enhance<'a, 'b>(grid: &'a mut Grid, enhance: &'b Enhance) -> &'a mut Grid {
     let lookup = grid.clone();
-    let min_i = min_i(&grid) - 1;
-    let max_i = max_i(&grid) + 1;
-    let min_j = min_j(&grid) - 1;
-    let max_j = max_j(&grid) + 1;
+    let min_i = min_i(&grid) - 3;
+    let max_i = max_i(&grid) + 3;
+    let min_j = min_j(&grid) - 3;
+    let max_j = max_j(&grid) + 3;
 
     for i in min_i..=max_i {
         for j in min_j..=max_j {
