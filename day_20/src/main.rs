@@ -80,10 +80,10 @@ impl Point {
 
 fn enhance<'a, 'b>(grid: &'a mut Grid, enhance: &'b Enhance) -> &'a mut Grid {
     let lookup = grid.clone();
-    let min_i = min_i(&grid) - 3;
-    let max_i = max_i(&grid) + 3;
-    let min_j = min_j(&grid) - 3;
-    let max_j = max_j(&grid) + 3;
+    let min_i = min_i(&grid) - 1;
+    let max_i = max_i(&grid) + 1;
+    let min_j = min_j(&grid) - 1;
+    let max_j = max_j(&grid) + 1;
 
     for i in min_i..=max_i {
         for j in min_j..=max_j {
