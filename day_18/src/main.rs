@@ -1,5 +1,3 @@
-// use itertools::Itertools;
-
 // use std::collections::HashMap;
 // use std::str::FromStr;
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -17,13 +15,26 @@ fn main() {
 }
 
 fn part_1(input: &str) -> u64 {
-    let _thing = parse(input);
-    unimplemented!()
+    magnitude(&mut add_reduce(input))
 }
 
 fn part_2(input: &str) -> u64 {
-    let _thing = parse(input);
-    unimplemented!()
+    let mut largest = u64::MIN;
+    let lines = input.trim().lines().map(parse).collect::<Vec<HyperGraph>>();
+    for i in 0..lines.len() {
+        for j in 0..lines.len() {
+            for (x, y) in [(i, j), (j, i)] {
+                let mut out = add(lines[x].clone(), lines[y].clone());
+                reduce(&mut out);
+
+                let val = magnitude(&mut out);
+                if val > largest {
+                    largest = val;
+                }
+            }
+        }
+    }
+    largest
 }
 
 fn parse(input: &str) -> Vec<HyperNum> {
@@ -77,8 +88,7 @@ fn add(left: HyperGraph, right: HyperGraph) -> HyperGraph {
 
 // let out = explode(parse("[[[[[9,8],1],2],3],4]"));
 // assert_eq!(out, parse("[[[[0,9],2],3],4]"));
-fn explode(input: HyperGraph) -> HyperGraph {
-    let mut input = input.clone();
+fn explode(input: &mut HyperGraph) -> bool {
     if let Some(a_index) = input.iter().position(|x| x.depth > 4) {
         if a_index > 0 {
             let a_val = input[a_index].val;
@@ -94,9 +104,75 @@ fn explode(input: HyperGraph) -> HyperGraph {
         if let Some(right) = input.get_mut(a_index + 1) {
             right.val += last.val;
         }
+        true
+    } else {
+        false
     }
+}
+fn reduce(input: &mut HyperGraph) {
+    while explode(input) || split(input) {
+        // iterate
+    }
+}
 
-    input
+fn add_reduce(input: &str) -> HyperGraph {
+    let mut lines = input.trim().lines().into_iter();
+    let mut last = parse(lines.next().unwrap());
+    reduce(&mut last);
+    for line in lines {
+        last = add(last, parse(line));
+        reduce(&mut last);
+    }
+    last
+}
+
+fn split(input: &mut HyperGraph) -> bool {
+    if let Some(a_index) = input.iter().position(|x| x.val >= 10) {
+        let a = input.remove(a_index);
+        let left = num::integer::div_floor(a.val, 2);
+        let right = num::integer::div_ceil(a.val, 2);
+
+        input.insert(
+            a_index,
+            HyperNum {
+                depth: a.depth + 1,
+                val: left,
+            },
+        );
+        input.insert(
+            a_index + 1,
+            HyperNum {
+                depth: a.depth + 1,
+                val: right,
+            },
+        );
+
+        true
+    } else {
+        false
+    }
+}
+
+// The magnitude of a pair is 3 times the magnitude of its left
+// plus 2 times the magnitude of its right element.
+fn magnitude(input: &mut HyperGraph) -> u64 {
+    while input.len() > 1 {
+        for i in 0..input.len() {
+            let a_val = input[i].val;
+            let a_depth = input[i].depth;
+            if let Some(b) = input.get_mut(i + 1) {
+                if a_depth == b.depth {
+                    let left = 3 * a_val;
+                    let right = 2 * b.val;
+                    b.val = left + right;
+                    b.depth -= 1;
+                    input.remove(i);
+                    break; // start over again
+                }
+            }
+        }
+    }
+    input[0].val.try_into().unwrap()
 }
 
 #[cfg(test)]
@@ -104,20 +180,109 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_mag() {
+        let out = magnitude(&mut parse("[9,1]"));
+        assert_eq!(out, 29);
+
+        let out = magnitude(&mut parse(
+            "[[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]]",
+        ));
+        assert_eq!(out, 3488);
+
+        let out = magnitude(&mut add_reduce(
+            r#"
+[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
+[[[5,[2,8]],4],[5,[[9,9],0]]]
+[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
+[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]
+[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]
+[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]
+[[[[5,4],[7,7]],8],[[8,3],8]]
+[[9,3],[[9,9],[6,[4,9]]]]
+[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
+[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]
+"#,
+        ));
+        assert_eq!(out, 4140);
+    }
+
+    #[test]
+    fn test_moar_add() {
+        let out = add_reduce(
+            r#"
+[1,1]
+[2,2]
+[3,3]
+[4,4]
+        "#,
+        );
+        assert_eq!(out, parse("[[[[1,1],[2,2]],[3,3]],[4,4]]"));
+
+        let out = add_reduce(
+            r#"
+[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
+[[[5,[2,8]],4],[5,[[9,9],0]]]
+[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
+[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]
+[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]
+[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]
+[[[[5,4],[7,7]],8],[[8,3],8]]
+[[9,3],[[9,9],[6,[4,9]]]]
+[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
+[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]
+        "#,
+        );
+        assert_eq!(
+            out,
+            parse("[[[[6,6],[7,6]],[[7,7],[7,0]]],[[[7,7],[7,7]],[[7,8],[9,9]]]]")
+        );
+    }
+
+    #[test]
+    fn test_reduce() {
+        let mut out = parse("[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]");
+        reduce(&mut out);
+        assert_eq!(out, parse("[[[[0,7],4],[[7,8],[6,0]]],[8,1]]"));
+    }
+
+    #[test]
+    fn test_manual_reduce() {
+        let mut out = parse("[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]");
+        explode(&mut out);
+        explode(&mut out);
+        split(&mut out);
+        split(&mut out);
+        explode(&mut out);
+        assert_eq!(out, parse("[[[[0,7],4],[[7,8],[6,0]]],[8,1]]"));
+    }
+
+    #[test]
+    fn test_split() {
+        let mut out = parse("[3,10]");
+        split(&mut out);
+        assert_eq!(out, parse("[3,[5,5]]"));
+    }
+
+    #[test]
     fn test_explode() {
-        let out = explode(parse("[[[[[9,8],1],2],3],4]"));
+        let mut out = parse("[[[[[9,8],1],2],3],4]");
+        explode(&mut out);
         assert_eq!(out, parse("[[[[0,9],2],3],4]"));
 
-        let out = explode(parse("[7,[6,[5,[4,[3,2]]]]]"));
+        let mut out = parse("[7,[6,[5,[4,[3,2]]]]]");
+        explode(&mut out);
         assert_eq!(out, parse("[7,[6,[5,[7,0]]]]"));
 
-        let out = explode(parse("[[6,[5,[4,[3,2]]]],1]"));
+        let mut out = parse("[[6,[5,[4,[3,2]]]],1]");
+        explode(&mut out);
         assert_eq!(out, parse("[[6,[5,[7,0]]],3]"));
 
-        let out = explode(parse("[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]"));
+        let mut out = parse("[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]");
+        explode(&mut out);
         assert_eq!(out, parse("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]"));
 
-        let out = explode(parse("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]"));
+        let mut out = parse("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]");
+        explode(&mut out);
         assert_eq!(out, parse("[[3,[2,[8,0]]],[9,[5,[7,0]]]]"));
     }
 
@@ -149,8 +314,19 @@ mod tests {
 
     #[test]
     fn test_parts() {
-        let input = r#""#;
-        assert_eq!(part_1(input), 99);
-        // assert_eq!(part_2(input), 99);
+        let input = r#"
+[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
+[[[5,[2,8]],4],[5,[[9,9],0]]]
+[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
+[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]
+[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]
+[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]
+[[[[5,4],[7,7]],8],[[8,3],8]]
+[[9,3],[[9,9],[6,[4,9]]]]
+[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
+[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]
+"#;
+
+        assert_eq!(part_2(input), 3993);
     }
 }
