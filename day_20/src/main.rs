@@ -19,17 +19,14 @@ type Grid = HashMap<Point, String>;
 
 fn part_1(input: &str) -> u64 {
     let Data {
-        grid: mut grid,
-        algorithm: algorithm,
+        mut grid,
+        algorithm,
     } = parse(input);
-    print(&grid);
     enhance(&mut grid, &algorithm);
-    print(&grid);
     enhance(&mut grid, &algorithm);
-    print(&grid);
 
     grid.iter()
-        .filter_map(|(k, v)| if v.as_str() == "#" { Some(1) } else { None })
+        .filter_map(|(_, v)| if v.as_str() == "#" { Some(1) } else { None })
         .count()
         .try_into()
         .unwrap()
@@ -110,7 +107,7 @@ fn enhance<'a, 'b>(grid: &'a mut Grid, enhance: &'b Enhance) -> &'a mut Grid {
         }
     }
 
-    for (point, mut v) in grid.iter_mut() {
+    for (point, v) in grid.iter_mut() {
         let substring = point
             .neighbors()
             .into_iter()
