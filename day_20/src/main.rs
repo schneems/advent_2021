@@ -17,19 +17,29 @@ struct Point {
 
 type Grid = HashMap<Point, String>;
 
-fn part_1(input: &str) -> u64 {
+fn expand_n(input: &str, n: i32) -> u64 {
     let Data {
         mut grid,
         algorithm,
     } = parse(input);
 
-    let min_i = min_i(&grid) - 2;
-    let max_i = max_i(&grid) + 2;
-    let min_j = min_j(&grid) - 2;
-    let max_j = max_j(&grid) + 2;
+    let min_i = min_i(&grid) - n;
+    let max_i = max_i(&grid) + n;
+    let min_j = min_j(&grid) - n;
+    let max_j = max_j(&grid) + n;
 
-    enhance(&mut grid, &algorithm);
-    enhance(&mut grid, &algorithm);
+    // print(&grid);
+    for i in 0..n {
+        if i % 2 == 0 {
+            enhance(&mut grid, &algorithm, String::from("."));
+        } else {
+            enhance(&mut grid, &algorithm, String::from("#"));
+        }
+
+        // println!("");
+        // println!("== {}", i);
+        // print(&grid);
+    }
 
     let mut count = 0;
 
@@ -46,9 +56,12 @@ fn part_1(input: &str) -> u64 {
     count
 }
 
+fn part_1(input: &str) -> u64 {
+    expand_n(input, 2)
+}
+
 fn part_2(input: &str) -> u64 {
-    let _thing = parse(input);
-    unimplemented!()
+    expand_n(input, 50)
 }
 
 fn parse(input: &str) -> Data {
@@ -92,12 +105,16 @@ impl Point {
     }
 }
 
-fn enhance<'a, 'b>(grid: &'a mut Grid, enhance: &'b Enhance) -> &'a mut Grid {
+fn enhance<'a, 'b>(
+    grid: &'a mut Grid,
+    enhance: &'b Enhance,
+    default_string: String,
+) -> &'a mut Grid {
     let lookup = grid.clone();
-    let min_i = min_i(&grid) - 3;
-    let max_i = max_i(&grid) + 3;
-    let min_j = min_j(&grid) - 3;
-    let max_j = max_j(&grid) + 3;
+    let min_i = min_i(&grid) - 1;
+    let max_i = max_i(&grid) + 1;
+    let min_j = min_j(&grid) - 1;
+    let max_j = max_j(&grid) + 1;
 
     for i in min_i..=max_i {
         for j in min_j..=max_j {
@@ -108,33 +125,24 @@ fn enhance<'a, 'b>(grid: &'a mut Grid, enhance: &'b Enhance) -> &'a mut Grid {
                 .into_iter()
                 .map(|p| {
                     //
-                    lookup.get(&p).unwrap_or(&String::from(".")).clone()
+                    lookup.get(&p).unwrap_or(&default_string).clone()
                 })
                 .collect::<Vec<String>>()
                 .clone()
                 .join("");
 
             let index = enhance_index(&substring);
-            // *v = enhance[index].clone();
-            let value = grid.entry(point).or_insert(String::from("."));
-            *value = enhance[index].clone();
+            // println!(
+            //     "{:?} {:?}, default: {:?}",
+            //     substring, enhance[index], default_string
+            // );
+
+            grid.insert(point.clone(), enhance[index].clone());
+            // println!("{:?}", grid.get(&point).unwrap());
+            // let value = grid.entry(point).or_insert_with(|| default_string.clone());
+            // *value = enhance[index].clone();
+            // println!("{}", value);
         }
-    }
-
-    for (point, v) in grid.iter_mut() {
-        let substring = point
-            .neighbors()
-            .into_iter()
-            .map(|p| {
-                //
-                lookup.get(&p).unwrap_or(&String::from(".")).clone()
-            })
-            .collect::<Vec<String>>()
-            .clone()
-            .join("");
-
-        let index = enhance_index(&substring);
-        *v = enhance[index].clone();
     }
 
     grid
@@ -245,6 +253,15 @@ mod tests {
 
     #[test]
     fn test_algorithm() {
+        let input = r#"
+#######..#.##.##...##.#.#..###..##....######.#.#..#..######.#.#..#####..##.##...#..##........#.#.#...##..##.#####..####.#####..####.#.##.#.#.#.##...##.##.#....###..#...###.#.##..##....##.##.#####..#...#..#....##..##.......##.##....###...#.##...######.##.#######.#.#.#.##.#.#..##.##...##.#.##.#####.#####.###.#....###..###.##.....###..#.##.########..#.#..####..#.###...##...##....##.#.#####..#...##.#..###...##......#.....#.##....##.###..#####..##.###....#..##..##.##.#######.#.##.##.#.####..###.###..#.####..##..
+
+...
+...
+...
+"#;
+        expand_n(input, 2);
+        panic!("lol");
         let algorithm = parse_enhance("..#.#..#####.#.#.#.###.##.....###.##.#..###.####..#####..#....#..#..##..###..######.###...####..#..#####..##..#.#####...##.#.#..#.##..#.#......#.###.######.###.####...#.##.##..#..#..#####.....#.#....###..#.##......#.....#..#..#..##..#...##.######.####.####.#.#...#.......#..#.#.#...####.##.#......#..#...##.#.##..#...##.#.##..###.#......#.#.......#.#.#.####.###.##...#.....####.#..#..#.##.#....##..#.####....##...##..#...#......#.#.......#.......##..####..#...#.#.#...##..#.#..###..#####........#..####......#..#");
         let mut grid = parse_grid(
             r#"
@@ -256,11 +273,11 @@ mod tests {
 "#,
         );
 
-        print(&grid);
-        enhance(&mut grid, &algorithm);
-        print(&grid);
-        enhance(&mut grid, &algorithm);
-        print(&grid);
+        // print(&grid);
+        // enhance(&mut grid, &algorithm, String::from("."));
+        // print(&grid);
+        // enhance(&mut grid, &algorithm, String::from("#"));
+        // print(&grid);
     }
 
     #[test]
@@ -288,7 +305,8 @@ mod tests {
 ..#..
 ..###
 "#;
-        assert_eq!(part_1(input), 35);
+        // assert_eq!(part_1(input), 35);
+        assert_eq!(part_1(include_str!("../input.txt")), 5786);
         // assert_eq!(part_2(input), 99);
     }
 }
