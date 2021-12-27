@@ -108,9 +108,141 @@ impl Scanner {
     }
 }
 
+fn rotate(point: Point, axis: Point) -> Point {
+    let mut out = point.clone();
+    for a in [(axis.0, 0, 0), (0, axis.1, 0), (0, 0, axis.2)] {
+        if a == (0, 0, 0) {
+            continue;
+        }
+        out = rotate_on_axis(out, a);
+    }
+    out
+}
+
+// https://www.mathworks.com/matlabcentral/answers/123763-how-to-rotate-entire-3d-data-with-x-y-z-values-along-a-particular-axis-say-x-axis
+fn rotate_on_axis(point: Point, axis: Point) -> Point {
+    // apparently i didn't even need this
+    let x = point.0;
+    let y = point.1;
+    let z = point.2;
+    match axis {
+        (n, 0, 0) => {
+            let degrees = std::f64::consts::FRAC_PI_2 * n as f64;
+            let cos = degrees.cos() as i16;
+            let sin = degrees.sin() as i16;
+            (x, y * cos - z * sin, y * sin + z * cos)
+        }
+        (0, n, 0) => {
+            let degrees = std::f64::consts::FRAC_PI_2 * n as f64;
+            let cos = degrees.cos() as i16;
+            let sin = degrees.sin() as i16;
+            (x * cos + z * sin, y, z * cos - x * sin)
+        }
+        (0, 0, n) => {
+            let degrees = std::f64::consts::FRAC_PI_2 * n as f64;
+            let cos = degrees.cos() as i16;
+            let sin = degrees.sin() as i16;
+            (x * cos - y * sin, x * sin + y * cos, z)
+        }
+        _ => panic!("Not supported {:?}", axis),
+    }
+}
+
+// use std::collections::HashSet;
+
+fn gen_orientations() -> Vec<Point> {
+    let mut out = Vec::with_capacity(96);
+    for x in [1, 2, 3, 4] {
+        for z in [1, 2, 3, 4] {
+            out.push((x, 0, z));
+            out.push((x, 1, z));
+            out.push((x, 2, z));
+            out.push((x, 3, z));
+        }
+    }
+
+    for y in [1, 3] {
+        for z in [1, 2, 3, 4] {
+            out.push((0, y, z));
+            out.push((1, y, z));
+            out.push((2, y, z));
+            out.push((3, y, z));
+        }
+    }
+    out
+}
+
+fn rotate_vec(beacons: &mut Vec<Point>, axis: Point) {
+    for i in 0..beacons.len() {
+        beacons[i] = rotate(beacons[i], axis);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_orientations() {
+        let out = rotate((8, 0, 7), (1, 0, 0));
+        assert_eq!(out, (8, -7, 0));
+        // let out = rotate((8, -7, 0), (0, 1, 0));
+        // assert_eq!(out, (0, -7, -8));
+        let out = rotate((8, -7, 0), (0, 2, 0));
+        assert_eq!(out, (-8, -7, 0));
+
+        let out = rotate((8, 0, 7), (1, 2, 0));
+        assert_eq!(out, (-8, -7, 0));
+
+        // let out = rotate((8,0, 7), (0, 0, 2));
+        // println!("{:?}", out);
+        // for x in 0..=4 {
+        //     for y in 0..=4 {
+        //         for z in 0..=4 {
+        //             let axis = (x, y, z);
+        //             let out = rotate((8, 0, 7), axis);
+        //             println!("====");
+        //             println!("rotated {:?}", axis);
+        //             println!("out {:?}", out);
+        //         }
+        //     }
+        // }
+        let out = gen_orientations();
+        assert_eq!(out.len(), 96);
+
+        let out = &mut parse(
+            r#"
+--- scanner 0 ---
+-1,-1,1
+-2,-2,2
+-3,-3,3
+-2,-3,1
+5,6,-4
+8,0,7
+        "#,
+        )[0];
+
+        // for axis in gen_orientations().iter() {
+        //     rotate_vec(&mut out.beacons, *axis);
+        //     println!("====");
+        //     for b in out.beacons.iter() {
+        //         println!("{},{},{}", b.0, b.1, b.2);
+        //     }
+        // }
+        panic!("lol");
+    }
+
+    #[test]
+    fn test_rotate() {
+        assert_eq!(rotate((0, 1, 0), (0, 0, 1)), (-1, 0, 0));
+        assert_eq!(rotate((4, 3, 0), (0, 0, 1)), (-3, 4, 0));
+        let mut out = (4, 3, 0);
+        for _ in 0..4 {
+            out = rotate(out, (0, 0, 1))
+        }
+
+        assert_eq!(out, (4, 3, 0));
+        assert_eq!(rotate((4, 3, 0), (0, 0, 4)), (4, 3, 0));
+    }
 
     #[test]
     fn test_match_points() {
