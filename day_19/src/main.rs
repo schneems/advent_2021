@@ -31,7 +31,6 @@ fn parse(input: &str) -> Vec<Scanner> {
 
     let mut beacons = Vec::new();
     while let Some(line) = lines.next() {
-        println!("{:?}", line);
         let mut chars = line.chars().peekable();
         if chars.peek().is_none() {
             continue;
@@ -44,7 +43,6 @@ fn parse(input: &str) -> Vec<Scanner> {
             continue;
         }
 
-        println!("Adding to beacon");
         let mut nums = line.split(",").into_iter();
         beacons.push((
             nums.next().unwrap().parse().unwrap(),
@@ -53,12 +51,14 @@ fn parse(input: &str) -> Vec<Scanner> {
         ))
     }
     out.push(Scanner::new(beacons));
+    out[0].position = Some((0, 0, 0));
 
     out
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Scanner {
+    position: Option<Point>,
     beacons: Vec<Point>,
     pairs: HashMap<i16, (Point, Point)>,
 }
@@ -73,21 +73,38 @@ impl Scanner {
                 }
             }
         }
-        Scanner { beacons, pairs }
+        Scanner {
+            beacons,
+            pairs,
+            position: None,
+        }
     }
 
-    fn find_overlap_becaon(&self, other: &Self) -> (Point, Point) {
-        // let mut vec_one = Vec::new();
-        // let mut vec_two = Vec::new();
+    fn find_overlap_becaon(&self, other: &Self) -> Vec<(Point, Point)> {
+        let mut maybe: HashMap<Point, HashMap<Point, usize>> = HashMap::new();
         for (dist, one) in &self.pairs {
-            println!("{:?}", dist);
             if let Some(two) = other.pairs.get(&dist) {
-                println!("======");
-                println!("{:?}", one);
-                println!("{:?}", two);
+                let mut matches = maybe.entry(one.0.clone()).or_insert(HashMap::new());
+                *matches.entry(two.0).or_insert(0) += 1;
+                *matches.entry(two.1).or_insert(0) += 1;
+
+                let mut matches = maybe.entry(one.1.clone()).or_insert(HashMap::new());
+                *matches.entry(two.0).or_insert(0) += 1;
+                *matches.entry(two.1).or_insert(0) += 1;
             }
         }
-        ((0, 0, 0), (0, 0, 0))
+
+        let mut matches = Vec::new();
+        for (one, lookup) in maybe {
+            if let Some((two, count)) = lookup.iter().max_by_key(|(point, count)| *count) {
+                if count >= &2 {
+                    matches.push((one, *two));
+                }
+            }
+        }
+        // for m
+        matches.sort();
+        matches
     }
 }
 
@@ -111,9 +128,11 @@ mod tests {
 "#,
         );
 
-        let pair = scanners[0].find_overlap_becaon(&scanners[1]);
-        // assert_eq!(pair.0, (0, 2, 0));
-        // assert_eq!(pair.0, (-1, -1, 0));
+        let matches = scanners[0].find_overlap_becaon(&scanners[1]);
+        assert_eq!(matches.len(), 3);
+        assert_eq!(matches[0], ((0, 2, 0), (-5, 0, 0)));
+        assert_eq!(matches[1], ((3, 3, 0), (-2, 1, 0)));
+        assert_eq!(matches[2], ((4, 1, 0), (-1, -1, 0)));
     }
 
     #[test]
