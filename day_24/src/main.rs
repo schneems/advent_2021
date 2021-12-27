@@ -264,6 +264,72 @@ mod tests {
     use super::*;
 
     #[test]
+    fn fuuuuuuuuuuu() {
+        let commands = parse(include_str!("../input.txt"));
+
+        let mut stack: Vec<(usize, i16)> = Vec::new();
+        let mut diff = [0; 14];
+        for (i, instructions) in commands.iter().enumerate() {
+            match &instructions[5].by_char {
+                Register::VAL(x) if x < &0 => {
+                    if let Register::VAL(this) = &instructions[5].by_char {
+                        let (j, that) = stack.pop().unwrap();
+                        // stack.push((j, that + this));
+                        diff[i] = that + this;
+                        diff[j] = -this - that;
+                    }
+                }
+                _ => {
+                    //push
+                    if let Register::VAL(x) = &instructions[15].by_char {
+                        stack.push((i, *x));
+                    }
+                }
+            }
+        }
+
+        let mut answer = Vec::new();
+        for i in 0..14 {
+            let val = 9 + diff[i];
+            if val < 9 {
+                answer.push(val);
+            } else {
+                answer.push(9);
+            }
+        }
+
+        println!(
+            "Part 1: {:?}",
+            answer
+                .iter()
+                .map(i16::to_string)
+                .collect::<Vec<String>>()
+                .join("")
+        );
+
+        let mut answer = Vec::new();
+        for i in 0..14 {
+            let val = 1 + diff[i];
+            if val > 1 {
+                answer.push(val);
+            } else {
+                answer.push(1);
+            }
+        }
+
+        println!(
+            "Part 2: {:?}",
+            answer
+                .iter()
+                .map(i16::to_string)
+                .collect::<Vec<String>>()
+                .join("")
+        );
+
+        panic!("=========");
+    }
+
+    #[test]
     fn test_parse() {
         let out = parse(
             r#"
