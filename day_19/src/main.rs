@@ -84,11 +84,11 @@ impl Scanner {
         let mut maybe: HashMap<Point, HashMap<Point, usize>> = HashMap::new();
         for (dist, one) in &self.pairs {
             if let Some(two) = other.pairs.get(&dist) {
-                let mut matches = maybe.entry(one.0.clone()).or_insert(HashMap::new());
+                let matches = maybe.entry(one.0.clone()).or_insert(HashMap::new());
                 *matches.entry(two.0).or_insert(0) += 1;
                 *matches.entry(two.1).or_insert(0) += 1;
 
-                let mut matches = maybe.entry(one.1.clone()).or_insert(HashMap::new());
+                let matches = maybe.entry(one.1.clone()).or_insert(HashMap::new());
                 *matches.entry(two.0).or_insert(0) += 1;
                 *matches.entry(two.1).or_insert(0) += 1;
             }
@@ -96,7 +96,7 @@ impl Scanner {
 
         let mut matches = Vec::new();
         for (one, lookup) in maybe {
-            if let Some((two, count)) = lookup.iter().max_by_key(|(point, count)| *count) {
+            if let Some((two, count)) = lookup.iter().max_by_key(|(_, count)| *count) {
                 if count >= &2 {
                     matches.push((one, *two));
                 }
@@ -193,33 +193,20 @@ mod tests {
         let out = rotate((8, 0, 7), (1, 2, 0));
         assert_eq!(out, (-8, -7, 0));
 
-        // let out = rotate((8,0, 7), (0, 0, 2));
-        // println!("{:?}", out);
-        // for x in 0..=4 {
-        //     for y in 0..=4 {
-        //         for z in 0..=4 {
-        //             let axis = (x, y, z);
-        //             let out = rotate((8, 0, 7), axis);
-        //             println!("====");
-        //             println!("rotated {:?}", axis);
-        //             println!("out {:?}", out);
-        //         }
-        //     }
-        // }
         let out = gen_orientations();
         assert_eq!(out.len(), 96);
 
-        let out = &mut parse(
-            r#"
---- scanner 0 ---
--1,-1,1
--2,-2,2
--3,-3,3
--2,-3,1
-5,6,-4
-8,0,7
-        "#,
-        )[0];
+        //         let out = &mut parse(
+        //             r#"
+        // --- scanner 0 ---
+        // -1,-1,1
+        // -2,-2,2
+        // -3,-3,3
+        // -2,-3,1
+        // 5,6,-4
+        // 8,0,7
+        //         "#,
+        //         )[0];
 
         // for axis in gen_orientations().iter() {
         //     rotate_vec(&mut out.beacons, *axis);
@@ -228,7 +215,6 @@ mod tests {
         //         println!("{},{},{}", b.0, b.1, b.2);
         //     }
         // }
-        panic!("lol");
     }
 
     #[test]
