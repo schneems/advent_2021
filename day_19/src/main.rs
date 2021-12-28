@@ -80,7 +80,7 @@ impl Scanner {
         }
     }
 
-    fn find_overlap_becaon(&self, other: &Self) -> Vec<(Point, Point)> {
+    fn find_overlap_becaon(&self, other: &Self, threshold: usize) -> Vec<(Point, Point)> {
         let mut maybe: HashMap<Point, HashMap<Point, usize>> = HashMap::new();
         for (dist, one) in &self.pairs {
             if let Some(two) = other.pairs.get(&dist) {
@@ -97,7 +97,7 @@ impl Scanner {
         let mut matches = Vec::new();
         for (one, lookup) in maybe {
             if let Some((two, count)) = lookup.iter().max_by_key(|(_, count)| *count) {
-                if count >= &2 {
+                if count >= &threshold {
                     matches.push((one, *two));
                 }
             }
@@ -182,6 +182,54 @@ fn rotate_vec(beacons: &mut Vec<Point>, axis: Point) {
 mod tests {
     use super::*;
     #[test]
+    fn test_rotate_and_locate() {
+        let scanners = given_case();
+        let zero = scanners[0].clone();
+        let one = scanners[1].clone();
+
+        let orientations = gen_orientations();
+        let joint = one.find_overlap_becaon(&zero, 3);
+
+        assert_eq!(joint.len(), 12);
+
+        let expected = vec![
+            ((686, 422, 578), (-618, -824, -621)),
+            ((605, 423, 415), (-537, -823, -458)),
+            ((515, 917, -361), (-447, -329, 318)),
+            ((-336, 658, 858), (404, -588, -901)),
+            ((-476, 619, 847), (544, -627, -890)),
+            ((-460, 603, -452), (528, -643, 409)),
+            ((729, 430, 532), (-661, -816, -575)),
+            ((-322, 571, 750), (390, -675, -793)),
+            ((-355, 545, -477), (423, -701, 434)),
+            ((413, 935, -424), (-345, -311, 381)),
+            ((-391, 539, -444), (459, -707, 401)),
+            ((553, 889, -390), (-485, -357, 347)),
+        ]
+        .into_iter()
+        .collect::<HashMap<(i16, i16, i16), (i16, i16, i16)>>();
+
+        for (a, b) in joint.iter() {
+            if expected.get(&a) != Some(b) {
+                panic!(
+                    "Expected mapping {:?} to {:?} to be in {:?} but it was not",
+                    a, b, expected
+                )
+            }
+        }
+
+        let mut min_distance = (i16::MAX, 0);
+        for i in 0..orientations.len() {
+            for (a, b) in &joint {
+                let distance = distance(rotate(*a, orientations[i]), *b);
+                if (distance, i) < min_distance {
+                    min_distance = (distance, i);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn test_orientations() {
         let out = rotate((8, 0, 7), (1, 0, 0));
         assert_eq!(out, (8, -7, 0));
@@ -246,7 +294,7 @@ mod tests {
 "#,
         );
 
-        let matches = scanners[0].find_overlap_becaon(&scanners[1]);
+        let matches = scanners[0].find_overlap_becaon(&scanners[1], 2);
         assert_eq!(matches.len(), 3);
         assert_eq!(matches[0], ((0, 2, 0), (-5, 0, 0)));
         assert_eq!(matches[1], ((3, 3, 0), (-2, 1, 0)));
@@ -282,5 +330,65 @@ mod tests {
     fn test_distance() {
         assert_eq!(distance((1, 0, 0), (2, 0, 0)), 1);
         assert_eq!(distance((2, 0, 0), (2, 0, 0)), 0);
+    }
+
+    fn given_case() -> Vec<Scanner> {
+        parse(
+            r#"
+--- scanner 0 ---
+404,-588,-901
+528,-643,409
+-838,591,734
+390,-675,-793
+-537,-823,-458
+-485,-357,347
+-345,-311,381
+-661,-816,-575
+-876,649,763
+-618,-824,-621
+553,345,-567
+474,580,667
+-447,-329,318
+-584,868,-557
+544,-627,-890
+564,392,-477
+455,729,728
+-892,524,684
+-689,845,-530
+423,-701,434
+7,-33,-71
+630,319,-379
+443,580,662
+-789,900,-551
+459,-707,401
+
+--- scanner 1 ---
+686,422,578
+605,423,415
+515,917,-361
+-336,658,858
+95,138,22
+-476,619,847
+-340,-569,-846
+567,-361,727
+-460,603,-452
+669,-402,600
+729,430,532
+-500,-761,534
+-322,571,750
+-466,-666,-811
+-429,-592,574
+-355,545,-477
+703,-491,-529
+-328,-685,520
+413,935,-424
+-391,539,-444
+586,-435,557
+-364,-763,-893
+807,-499,-711
+755,-354,-619
+553,889,-390
+"#,
+        )
     }
 }
