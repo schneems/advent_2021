@@ -150,23 +150,21 @@ fn rotate_on_axis(point: Point, axis: Point) -> Point {
 
 // use std::collections::HashSet;
 
+fn gen_directions() -> Vec<Point> {
+    vec![(1, 1, 1), (-1, 1, 1), (1, -1, 1), (1, 1, -1)]
+}
+
 fn gen_orientations() -> Vec<Point> {
     let mut out = Vec::with_capacity(96);
-    for x in [1, 2, 3, 4] {
-        for z in [1, 2, 3, 4] {
+    for x in [0, 1, 2, 3] {
+        for z in [0, 1, 2, 3] {
             out.push((x, 0, z));
-            out.push((x, 1, z));
-            out.push((x, 2, z));
-            out.push((x, 3, z));
         }
     }
 
     for y in [1, 3] {
-        for z in [1, 2, 3, 4] {
+        for z in [0, 1, 2, 3] {
             out.push((0, y, z));
-            out.push((1, y, z));
-            out.push((2, y, z));
-            out.push((3, y, z));
         }
     }
     out
@@ -176,6 +174,48 @@ fn rotate_vec(beacons: &mut Vec<Point>, axis: Point) {
     for i in 0..beacons.len() {
         beacons[i] = rotate(beacons[i], axis);
     }
+}
+
+fn rotate_flip(input: Point, axis: Point, flip: Point) -> Point {
+    let point = rotate(input, axis);
+    (flip.0 * point.0, flip.1 * point.1, flip.2 * point.2)
+}
+
+// Figure out how to align
+
+fn direction_between_points(one: Point, two: Point) -> Point {
+    let dx = (two.0 - one.0) as f64;
+    let dy = (two.1 - one.1) as f64;
+    let dz = (two.2 - one.2) as f64;
+
+    let heading = dy.atan2(dx);
+    let heading2 = dz.atan2(dy);
+
+    let a = heading.cos();
+    let b = heading.sin();
+    let c = heading2.sin();
+    (a.signum() as i16, b.signum() as i16, c.signum() as i16)
+}
+
+fn fdirection_between_points(one: Point, two: Point) -> (f64, f64, f64) {
+    let dx = (two.0 - one.0) as f64;
+    let dy = (two.1 - one.1) as f64;
+    let dz = (two.2 - one.2) as f64;
+
+    let heading = dy.atan2(dx);
+    let heading2 = dz.atan2(dy);
+
+    let a = heading.cos();
+    let b = heading.sin();
+    let c = heading2.sin();
+    (a, b, c)
+}
+
+fn cart_distance(one: Point, two: Point) -> f64 {
+    (((two.0 - one.0) as f64).powf(2.0)
+        + ((two.1 - one.1) as f64).powf(2.0)
+        + ((two.2 - one.2) as f64).powf(2.0))
+    .sqrt()
 }
 
 #[cfg(test)]
@@ -218,15 +258,54 @@ mod tests {
             }
         }
 
-        let mut min_distance = (i16::MAX, 0);
-        for i in 0..orientations.len() {
+        let mut min_distance = (f64::MAX, 0);
+        for (i, axis) in orientations.iter().enumerate() {
+            let mut dist = 0.0;
             for (a, b) in &joint {
-                let distance = distance(rotate(*a, orientations[i]), *b);
-                if (distance, i) < min_distance {
-                    min_distance = (distance, i);
+                dist += cart_distance(rotate(*a, *axis), *b) as f64;
+            }
+
+            if (dist, i) < min_distance {
+                min_distance = (dist, i);
+            }
+        }
+        let rotation = orientations[min_distance.1];
+
+        let mut pairs = joint.iter().clone().peekable();
+        let (a_one, b_one) = pairs.next().unwrap();
+        let (a_two, b_two) = pairs.peek().unwrap();
+        let a_sig = direction_between_points(*a_one, *a_two);
+
+        let b_sig = direction_between_points(*b_one, *b_two);
+
+        let flips = gen_directions();
+        let b_direction = fdirection_between_points(*b_one, *b_two);
+        let mut delta = (None, None);
+        'outer: for (j, flip) in flips.iter().enumerate() {
+            for (i, axis) in orientations.iter().enumerate() {
+                let out = fdirection_between_points(
+                    rotate_flip(*a_one, *axis, *flip),
+                    rotate_flip(*a_two, *axis, *flip),
+                );
+                if out == b_direction {
+                    delta = (Some(i), Some(j));
+                    break 'outer;
                 }
             }
         }
+
+        let rotation = orientations[delta.0.unwrap()];
+        let flip = flips[delta.1.unwrap()];
+
+        let a_fixed = rotate_flip(*a_one, rotation, flip);
+        assert_eq!(
+            (
+                b_one.0 - a_fixed.0,
+                b_one.1 - a_fixed.1,
+                b_one.2 - a_fixed.2
+            ),
+            (68, -1246, -43)
+        );
     }
 
     #[test]
@@ -242,27 +321,14 @@ mod tests {
         assert_eq!(out, (-8, -7, 0));
 
         let out = gen_orientations();
-        assert_eq!(out.len(), 96);
+        assert_eq!(out.len(), 24);
 
-        //         let out = &mut parse(
-        //             r#"
-        // --- scanner 0 ---
-        // -1,-1,1
-        // -2,-2,2
-        // -3,-3,3
-        // -2,-3,1
-        // 5,6,-4
-        // 8,0,7
-        //         "#,
-        //         )[0];
+        let mut foo = HashMap::new();
+        for axis in out.iter() {
+            foo.insert(rotate((1, 2, 3), *axis), 1);
+        }
 
-        // for axis in gen_orientations().iter() {
-        //     rotate_vec(&mut out.beacons, *axis);
-        //     println!("====");
-        //     for b in out.beacons.iter() {
-        //         println!("{},{},{}", b.0, b.1, b.2);
-        //     }
-        // }
+        assert_eq!(foo.len(), 24);
     }
 
     #[test]
