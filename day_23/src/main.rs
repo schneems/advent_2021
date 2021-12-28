@@ -4,8 +4,6 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
-type Point = (i8, i8);
-
 #[derive(Copy, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum AmphipodColor {
     A,
@@ -17,7 +15,7 @@ enum AmphipodColor {
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 struct Board {
-    last: AmphipodColor,
+    last: Option<usize>,
     hallway: [AmphipodColor; 10],
     a: [AmphipodColor; 2],
     b: [AmphipodColor; 2],
@@ -26,15 +24,64 @@ struct Board {
 }
 
 impl Board {
+    fn door_index(&self, color: &AmphipodColor) -> usize {
+        match color {
+            AmphipodColor::A => 2,
+            AmphipodColor::B => 4,
+            AmphipodColor::C => 6,
+            AmphipodColor::D => 8,
+            AmphipodColor::None => panic!("nope"),
+        }
+    }
+
+    fn steps_to_door_from(&self, index: usize) -> Option<u64> {
+        let target = self.door_index(&self.hallway[index]);
+
+        if target > index {
+            for i in index + 1..target {
+                if self.hallway[i] != AmphipodColor::None {
+                    return None;
+                }
+            }
+            Some((target - index).try_into().unwrap())
+        } else {
+            for i in target + 1..index {
+                if self.hallway[i] != AmphipodColor::None {
+                    return None;
+                }
+            }
+            Some((index - target).try_into().unwrap())
+        }
+    }
+
+    fn room_for_color(&self, color: &AmphipodColor) -> [AmphipodColor; 2] {
+        match color {
+            AmphipodColor::A => self.a,
+            AmphipodColor::B => self.b,
+            AmphipodColor::C => self.c,
+            AmphipodColor::D => self.d,
+            AmphipodColor::None => panic!("nope"),
+        }
+    }
+
     fn color_is_happy(&self, color: &AmphipodColor) -> bool {
-        let room = match color {
-            &AmphipodColor::A => self.a,
-            &AmphipodColor::B => self.b,
-            &AmphipodColor::C => self.c,
-            &AmphipodColor::D => self.d,
-            &AmphipodColor::None => panic!("nope"),
-        };
-        room.iter().all(|c| c == color)
+        self.room_for_color(&color).iter().all(|c| c == color)
+    }
+
+    fn room_is_ready(&self, color: &AmphipodColor) -> Option<usize> {
+        let room = self.room_for_color(&color);
+        if room.iter().all(|c| c == &AmphipodColor::None || c == color) {
+            let (i, _) = room
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c == &&AmphipodColor::None)
+                .last()
+                .unwrap();
+
+            Some(i)
+        } else {
+            None
+        }
     }
 }
 
@@ -87,7 +134,7 @@ fn parse(input: &str) -> Board {
         index += 1;
     }
 
-    let last = AmphipodColor::None;
+    let last = None;
     Board {
         last,
         hallway,
@@ -97,69 +144,6 @@ fn parse(input: &str) -> Board {
         d,
     }
 }
-
-// #[derive(Debug, Clone, PartialEq, Eq)]
-// struct Position {
-//     cost: u64,
-//     ready: HashMap<(i8, i8), Amphipod>,
-//     waiting: HashMap<(i8, i8), Amphipod>,
-//     happy: HashMap<(i8, i8), Amphipod>,
-// }
-
-// impl Ord for Position {
-//     fn cmp(&self, other: &Self) -> Ordering {
-//         self.cost.cmp(&other.cost)
-//     }
-// }
-
-// impl PartialOrd for Position {
-//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-//         Some(self.cmp(other))
-//     }
-// }
-
-// fn build_world_example() -> Grid {
-//     let mut grid = Grid::new();
-//     for i in 0..=10 {
-//         grid.insert((0, i), Square { room: None });
-//     }
-//     for (i, j) in [(-1, 2), (-2, 2)] {
-//         grid.insert(
-//             (i, j),
-//             Square {
-//                 room: Some(AmphipodColor::A),
-//             },
-//         );
-//     }
-
-//     for (i, j) in [(-1, 4), (-2, 4)] {
-//         grid.insert(
-//             (i, j),
-//             Square {
-//                 room: Some(AmphipodColor::B),
-//             },
-//         );
-//     }
-
-//     for (i, j) in [(-1, 6), (-2, 6)] {
-//         grid.insert(
-//             (i, j),
-//             Square {
-//                 room: Some(AmphipodColor::C),
-//             },
-//         );
-//     }
-
-//     for (i, j) in [(-1, 8), (-2, 8)] {
-//         grid.insert(
-//             (0, i),
-//             Square {
-//                 room: Some(AmphipodColor::C),
-//             },
-//         );
-//     }
-//     grid
-// }
 
 fn main() {
     let out = part_1(include_str!("../input.txt"));
@@ -181,11 +165,11 @@ fn part_2(input: &str) -> u64 {
 
 fn color_to_str(color: &AmphipodColor) -> String {
     match color {
-        &AmphipodColor::A => "A".to_string(),
-        &AmphipodColor::B => "B".to_string(),
-        &AmphipodColor::C => "C".to_string(),
-        &AmphipodColor::D => "D".to_string(),
-        &AmphipodColor::None => ".".to_string(),
+        AmphipodColor::A => "A".to_string(),
+        AmphipodColor::B => "B".to_string(),
+        AmphipodColor::C => "C".to_string(),
+        AmphipodColor::D => "D".to_string(),
+        AmphipodColor::None => ".".to_string(),
     }
 }
 
@@ -215,8 +199,55 @@ fn play(board: Board) -> u64 {
     let mut frontier = BinaryHeap::new();
     frontier.push(Reverse((0, 0, board.clone())));
 
-    if let Some(Reverse(board)) = frontier.pop() {}
-    0
+    while let Some(Reverse((_h, mut cost, board))) = frontier.pop() {
+        print(&board);
+        if board.color_is_happy(&AmphipodColor::A)
+            && board.color_is_happy(&AmphipodColor::B)
+            && board.color_is_happy(&AmphipodColor::C)
+            && board.color_is_happy(&AmphipodColor::D)
+        {
+            return cost;
+        }
+
+        if board.last.is_none() {
+            // Check if any hallway colors can move
+            let colors = board
+                .hallway
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c != &&AmphipodColor::None && board.room_is_ready(c).is_some())
+                .collect::<Vec<_>>();
+
+            if colors.is_empty() {
+                continue;
+            }
+
+            let mut next = board.clone();
+            for (index, color) in colors.iter() {
+                if let Some(c_index) = next.room_is_ready(color) {
+                    if let Some(steps) = next.steps_to_door_from(*index) {
+                        next.last = None;
+                        next.hallway[*index] = AmphipodColor::None;
+                        match *color {
+                            AmphipodColor::A => next.a[c_index] = *color.clone(),
+                            AmphipodColor::B => next.b[c_index] = *color.clone(),
+                            AmphipodColor::C => next.c[c_index] = *color.clone(),
+                            AmphipodColor::D => next.d[c_index] = *color.clone(),
+                            AmphipodColor::None => panic!("Nope"),
+                        };
+                        println!("steps {}", steps);
+                        println!("room cost {}", c_index + 1);
+
+                        cost += (steps + c_index as u64 + 1) * cost_color(color);
+                    }
+                }
+            }
+
+            frontier.push(Reverse((cost, cost, next)));
+        } else {
+        }
+    }
+    99
 }
 
 fn cost_color(color: &AmphipodColor) -> u64 {
@@ -238,6 +269,21 @@ mod tests {
         let board = parse(
             r#"
 #############
+#...........#
+###A#B#C#D###
+  #A#B#C#D#
+  #########
+"#,
+        );
+
+        assert_eq!(play(board), 0);
+    }
+
+    #[test]
+    fn test_clear_hallway_one() {
+        let board = parse(
+            r#"
+#############
 #.........A.#
 ###.#B#C#D###
   #A#B#C#D#
@@ -245,7 +291,26 @@ mod tests {
 "#,
         );
 
+        assert_eq!(board.room_is_ready(&AmphipodColor::A).unwrap(), 0);
         assert_eq!(play(board), 8);
+    }
+
+    #[test]
+    fn test_clear_hallway_two() {
+        let board = parse(
+            r#"
+#############
+#A........A.#
+###.#B#C#D###
+  #.#B#C#D#
+  #########
+"#,
+        );
+
+        assert_eq!(board.steps_to_door_from(9).unwrap(), 7);
+        assert_eq!(board.steps_to_door_from(0).unwrap(), 2);
+        assert_eq!(board.room_is_ready(&AmphipodColor::A).unwrap(), 1);
+        assert_eq!(play(board), 12);
     }
 
     #[test]
@@ -271,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_parts() {
-        let input = r#""#;
+        // let input = r#""#;
         // assert_eq!(part_1(input), 99);
         // assert_eq!(part_2(input), 99);
     }
