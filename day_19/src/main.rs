@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
-// use std::str::FromStr;
-
 fn main() {
     let out = part_1(include_str!("../input.txt"));
     println!("part_1: {}", out);
@@ -121,7 +119,6 @@ impl Scanner {
                 }
             }
         }
-        // for m
         matches.sort();
         matches
     }
@@ -215,8 +212,6 @@ fn rotate_on_axis(point: Point, axis: Point) -> Point {
     }
 }
 
-// use std::collections::HashSet;
-
 fn gen_directions() -> Vec<Point> {
     vec![(1, 1, 1), (-1, 1, 1), (1, -1, 1), (1, 1, -1)]
 }
@@ -254,22 +249,6 @@ fn rotate_flip(input: Point, axis: Point, flip: Point) -> Point {
     (flip.0 * point.0, flip.1 * point.1, flip.2 * point.2)
 }
 
-// Figure out how to align
-
-// fn direction_between_points(one: Point, two: Point) -> Point {
-//     let dx = (two.0 - one.0) as f64;
-//     let dy = (two.1 - one.1) as f64;
-//     let dz = (two.2 - one.2) as f64;
-
-//     let heading = dy.atan2(dx);
-//     let heading2 = dz.atan2(dy);
-
-//     let a = heading.cos();
-//     let b = heading.sin();
-//     let c = heading2.sin();
-//     (a.signum() as i16, b.signum() as i16, c.signum() as i16)
-// }
-
 fn fdirection_between_points(one: Point, two: Point) -> (f64, f64, f64) {
     let dx = (two.0 - one.0) as f64;
     let dy = (two.1 - one.1) as f64;
@@ -284,13 +263,6 @@ fn fdirection_between_points(one: Point, two: Point) -> (f64, f64, f64) {
     (a, b, c)
 }
 
-// fn cart_distance(one: Point, two: Point) -> f64 {
-//     (((two.0 - one.0) as f64).powf(2.0)
-//         + ((two.1 - one.1) as f64).powf(2.0)
-//         + ((two.2 - one.2) as f64).powf(2.0))
-//     .sqrt()
-// }
-
 fn unique_beacons(scanners: Vec<Scanner>) -> HashSet<Point> {
     scanners
         .iter()
@@ -303,19 +275,12 @@ fn fix_scanners(scanners: &Vec<Scanner>) -> Vec<Scanner> {
     not_fixed.reverse();
     let mut fixed = vec![not_fixed.pop().unwrap()];
     while let Some(mut unknown) = not_fixed.pop() {
-        let mut found = false;
-        for known in fixed.iter() {
-            let joint = unknown.find_overlap_becaon(known, 3);
-            if joint.len() < 12 {
-                continue;
-            }
-            found = true;
+        let known = fixed
+            .iter()
+            .find(|k| unknown.find_overlap_becaon(k, 4).len() >= 12);
 
-            unknown.fix_orientation(known);
-            break;
-        }
-
-        if found {
+        if let Some(target) = known {
+            unknown.fix_orientation(target);
             fixed.push(unknown);
         } else {
             not_fixed.insert(0, unknown);
@@ -508,8 +473,6 @@ mod tests {
     fn test_orientations() {
         let out = rotate((8, 0, 7), (1, 0, 0));
         assert_eq!(out, (8, -7, 0));
-        // let out = rotate((8, -7, 0), (0, 1, 0));
-        // assert_eq!(out, (0, -7, -8));
         let out = rotate((8, -7, 0), (0, 2, 0));
         assert_eq!(out, (-8, -7, 0));
 
