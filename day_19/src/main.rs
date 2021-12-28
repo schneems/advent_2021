@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 // use std::str::FromStr;
 
 fn main() {
@@ -10,8 +11,9 @@ fn main() {
 }
 
 fn part_1(input: &str) -> u64 {
-    let _thing = parse(input);
-    unimplemented!()
+    let scanners = parse(input);
+    let scanners = fix_scanners(&scanners);
+    unique_beacons(scanners).len().try_into().unwrap()
 }
 
 fn part_2(input: &str) -> u64 {
@@ -29,6 +31,7 @@ fn parse(input: &str) -> Vec<Scanner> {
     let mut out = Vec::new();
     let mut lines = input.trim().lines().into_iter();
 
+    let mut num = 0;
     let mut beacons = Vec::new();
     while let Some(line) = lines.next() {
         let mut chars = line.chars().peekable();
@@ -37,8 +40,9 @@ fn parse(input: &str) -> Vec<Scanner> {
         }
         if chars.last() == Some('-') {
             if beacons.len() > 0 {
-                out.push(Scanner::new(beacons));
+                out.push(Scanner::new(beacons, num));
                 beacons = Vec::new();
+                num += 1;
             }
             continue;
         }
@@ -50,7 +54,8 @@ fn parse(input: &str) -> Vec<Scanner> {
             nums.next().unwrap().parse().unwrap(),
         ))
     }
-    out.push(Scanner::new(beacons));
+    num += 1;
+    out.push(Scanner::new(beacons, num));
     out[0].position = Some((0, 0, 0));
 
     out
@@ -58,13 +63,14 @@ fn parse(input: &str) -> Vec<Scanner> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Scanner {
+    num: i16,
     position: Option<Point>,
     beacons: Vec<Point>,
     pairs: HashMap<i16, (Point, Point)>,
 }
 
 impl Scanner {
-    fn new(beacons: Vec<Point>) -> Self {
+    fn new(beacons: Vec<Point>, num: i16) -> Self {
         let mut pairs = HashMap::new();
         for one in beacons.iter() {
             for two in beacons.iter() {
@@ -74,6 +80,7 @@ impl Scanner {
             }
         }
         Scanner {
+            num,
             beacons,
             pairs,
             position: None,
@@ -106,6 +113,55 @@ impl Scanner {
         matches.sort();
         matches
     }
+
+    fn fix_orientation(&mut self, target: &Self) {
+        if target.position.is_none() {
+            panic!("target position is not known {:?}", target);
+        }
+
+        let orientations = gen_orientations();
+        let flips = gen_directions();
+
+        let joint = self.find_overlap_becaon(&target, 4);
+        let mut pairs = joint.iter().clone().peekable();
+        let (self_one, target_one) = pairs.next().unwrap();
+        let (self_two, target_two) = pairs.peek().unwrap();
+
+        let b_direction = fdirection_between_points(*target_one, *target_two);
+        let mut delta = (None, None);
+        'outer: for (j, flip) in flips.iter().enumerate() {
+            for (i, axis) in orientations.iter().enumerate() {
+                let out = fdirection_between_points(
+                    rotate_flip(*self_one, *axis, *flip),
+                    rotate_flip(*self_two, *axis, *flip),
+                );
+                if out == b_direction {
+                    delta = (Some(i), Some(j));
+                    break 'outer;
+                }
+            }
+        }
+
+        if delta.0.is_none() {}
+
+        let rotation = orientations[delta.0.unwrap()];
+        let flip = flips[delta.1.unwrap()];
+        let a_fixed = rotate_flip(*self_one, rotation, flip);
+
+        let translation = (
+            target_one.0 - a_fixed.0,
+            target_one.1 - a_fixed.1,
+            target_one.2 - a_fixed.2,
+        );
+
+        let mut new_beacons = self.beacons.clone();
+        rotate_flip_translate_vec(&mut new_beacons, rotation, flip, translation);
+        let scanner = Scanner::new(new_beacons, self.num);
+
+        self.beacons = scanner.beacons;
+        self.pairs = scanner.pairs;
+        self.position = Some(translation);
+    }
 }
 
 fn rotate(point: Point, axis: Point) -> Point {
@@ -121,7 +177,6 @@ fn rotate(point: Point, axis: Point) -> Point {
 
 // https://www.mathworks.com/matlabcentral/answers/123763-how-to-rotate-entire-3d-data-with-x-y-z-values-along-a-particular-axis-say-x-axis
 fn rotate_on_axis(point: Point, axis: Point) -> Point {
-    // apparently i didn't even need this
     let x = point.0;
     let y = point.1;
     let z = point.2;
@@ -170,9 +225,15 @@ fn gen_orientations() -> Vec<Point> {
     out
 }
 
-fn rotate_vec(beacons: &mut Vec<Point>, axis: Point) {
+fn rotate_flip_translate_vec(beacons: &mut Vec<Point>, axis: Point, flip: Point, trans: Point) {
     for i in 0..beacons.len() {
-        beacons[i] = rotate(beacons[i], axis);
+        beacons[i] = rotate_flip(beacons[i], axis, flip);
+    }
+
+    for beacon in beacons.iter_mut() {
+        beacon.0 += trans.0;
+        beacon.1 += trans.1;
+        beacon.2 += trans.2;
     }
 }
 
@@ -183,19 +244,19 @@ fn rotate_flip(input: Point, axis: Point, flip: Point) -> Point {
 
 // Figure out how to align
 
-fn direction_between_points(one: Point, two: Point) -> Point {
-    let dx = (two.0 - one.0) as f64;
-    let dy = (two.1 - one.1) as f64;
-    let dz = (two.2 - one.2) as f64;
+// fn direction_between_points(one: Point, two: Point) -> Point {
+//     let dx = (two.0 - one.0) as f64;
+//     let dy = (two.1 - one.1) as f64;
+//     let dz = (two.2 - one.2) as f64;
 
-    let heading = dy.atan2(dx);
-    let heading2 = dz.atan2(dy);
+//     let heading = dy.atan2(dx);
+//     let heading2 = dz.atan2(dy);
 
-    let a = heading.cos();
-    let b = heading.sin();
-    let c = heading2.sin();
-    (a.signum() as i16, b.signum() as i16, c.signum() as i16)
-}
+//     let a = heading.cos();
+//     let b = heading.sin();
+//     let c = heading2.sin();
+//     (a.signum() as i16, b.signum() as i16, c.signum() as i16)
+// }
 
 fn fdirection_between_points(one: Point, two: Point) -> (f64, f64, f64) {
     let dx = (two.0 - one.0) as f64;
@@ -211,23 +272,155 @@ fn fdirection_between_points(one: Point, two: Point) -> (f64, f64, f64) {
     (a, b, c)
 }
 
-fn cart_distance(one: Point, two: Point) -> f64 {
-    (((two.0 - one.0) as f64).powf(2.0)
-        + ((two.1 - one.1) as f64).powf(2.0)
-        + ((two.2 - one.2) as f64).powf(2.0))
-    .sqrt()
+// fn cart_distance(one: Point, two: Point) -> f64 {
+//     (((two.0 - one.0) as f64).powf(2.0)
+//         + ((two.1 - one.1) as f64).powf(2.0)
+//         + ((two.2 - one.2) as f64).powf(2.0))
+//     .sqrt()
+// }
+
+fn unique_beacons(scanners: Vec<Scanner>) -> HashSet<Point> {
+    scanners
+        .iter()
+        .flat_map(|scanner| scanner.beacons.clone())
+        .collect::<HashSet<Point>>()
+}
+
+fn fix_scanners(scanners: &Vec<Scanner>) -> Vec<Scanner> {
+    let mut not_fixed = scanners.clone();
+    not_fixed.reverse();
+    let mut fixed = vec![not_fixed.pop().unwrap()];
+    while let Some(mut unknown) = not_fixed.pop() {
+        let mut found = false;
+        for known in fixed.iter() {
+            let joint = unknown.find_overlap_becaon(known, 3);
+            if joint.len() < 12 {
+                continue;
+            }
+            found = true;
+
+            unknown.fix_orientation(known);
+        }
+
+        if found {
+            fixed.push(unknown);
+        } else {
+            not_fixed.insert(0, unknown);
+        }
+    }
+
+    fixed.sort_by(|a, b| a.num.cmp(&b.num));
+    fixed
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn blerg() {
+        let scanners = parse(
+            r#"
+-- lol --
+449,-685,-738
+448,-1836,-1882
+856,-1641,-752
+1853,-1640,-472
+1769,-548,-371
+1913,-479,-334
+1821,-476,-508
+2086,-478,-1588
+1215,-1201,-1158
+1940,-1739,-465
+605,-1792,-1821
+1799,-1931,-1987
+420,-759,-1871
+2128,-521,-1771
+946,-1646,-703
+1694,-1948,-1914
+379,-781,-1841
+857,-1713,-640
+1783,-1750,-508
+2083,-601,-1682
+472,-862,-1852
+1714,-2086,-1984
+585,-1856,-1822
+431,-699,-732
+388,-625,-587
+
+-- lol --
+-725,440,-714
+634,594,661
+732,307,-423
+-751,-745,518
+727,356,-333
+-819,460,-721
+623,551,504
+-366,621,665
+-53,-10,-32
+-569,608,654
+-656,-561,-730
+-610,-809,608
+-857,-622,-742
+30,-172,47
+537,-823,-831
+733,587,574
+517,-763,-694
+-364,523,660
+442,-928,520
+-759,413,-862
+581,-762,-674
+-641,-653,496
+287,-925,435
+425,-855,415
+-818,-632,-669
+660,419,-422
+"#,
+        );
+
+        let known = scanners[0].clone();
+        let mut unknown = scanners[1].clone();
+        unknown.fix_orientation(&known);
+    }
+
+    #[test]
+    fn test_part_1_given() {
+        let scanners = given_case();
+        let scanners = fix_scanners(&scanners);
+        assert_eq!(&scanners[0].position, &Some((0, 0, 0)));
+        assert_eq!(&scanners[1].position, &Some((68, -1246, -43)));
+        assert_eq!(&scanners[2].position, &Some((1105, -1205, 1229)));
+        assert_eq!(&scanners[3].position, &Some((-92, -2380, -20)));
+        assert_eq!(&scanners[4].position, &Some((-20, -1133, 1061)));
+
+        assert_eq!(unique_beacons(scanners).len(), 79);
+    }
+
+    #[test]
+    fn test_fix() {
+        let scanners = given_case();
+        let zero = scanners[0].clone();
+        let mut one = scanners[1].clone();
+
+        one.fix_orientation(&zero);
+
+        assert_eq!(one.position.unwrap(), (68, -1246, -43));
+
+        let joint = one.find_overlap_becaon(&zero, 3);
+
+        for (a, b) in joint.iter() {
+            if a != b {
+                panic!("Expected {:?} to eq {:?} but it did not", a, b);
+            }
+        }
+    }
+
     #[test]
     fn test_rotate_and_locate() {
         let scanners = given_case();
         let zero = scanners[0].clone();
         let one = scanners[1].clone();
 
-        let orientations = gen_orientations();
         let joint = one.find_overlap_becaon(&zero, 3);
 
         assert_eq!(joint.len(), 12);
@@ -258,27 +451,12 @@ mod tests {
             }
         }
 
-        let mut min_distance = (f64::MAX, 0);
-        for (i, axis) in orientations.iter().enumerate() {
-            let mut dist = 0.0;
-            for (a, b) in &joint {
-                dist += cart_distance(rotate(*a, *axis), *b) as f64;
-            }
-
-            if (dist, i) < min_distance {
-                min_distance = (dist, i);
-            }
-        }
-        let rotation = orientations[min_distance.1];
-
+        let orientations = gen_orientations();
+        let flips = gen_directions();
         let mut pairs = joint.iter().clone().peekable();
         let (a_one, b_one) = pairs.next().unwrap();
         let (a_two, b_two) = pairs.peek().unwrap();
-        let a_sig = direction_between_points(*a_one, *a_two);
 
-        let b_sig = direction_between_points(*b_one, *b_two);
-
-        let flips = gen_directions();
         let b_direction = fdirection_between_points(*b_one, *b_two);
         let mut delta = (None, None);
         'outer: for (j, flip) in flips.iter().enumerate() {
@@ -454,6 +632,89 @@ mod tests {
 807,-499,-711
 755,-354,-619
 553,889,-390
+
+--- scanner 2 ---
+649,640,665
+682,-795,504
+-784,533,-524
+-644,584,-595
+-588,-843,648
+-30,6,44
+-674,560,763
+500,723,-460
+609,671,-379
+-555,-800,653
+-675,-892,-343
+697,-426,-610
+578,704,681
+493,664,-388
+-671,-858,530
+-667,343,800
+571,-461,-707
+-138,-166,112
+-889,563,-600
+646,-828,498
+640,759,510
+-630,509,768
+-681,-892,-333
+673,-379,-804
+-742,-814,-386
+577,-820,562
+
+--- scanner 3 ---
+-589,542,597
+605,-692,669
+-500,565,-823
+-660,373,557
+-458,-679,-417
+-488,449,543
+-626,468,-788
+338,-750,-386
+528,-832,-391
+562,-778,733
+-938,-730,414
+543,643,-506
+-524,371,-870
+407,773,750
+-104,29,83
+378,-903,-323
+-778,-728,485
+426,699,580
+-438,-605,-362
+-469,-447,-387
+509,732,623
+647,635,-688
+-868,-804,481
+614,-800,639
+595,780,-596
+
+--- scanner 4 ---
+727,592,562
+-293,-554,779
+441,611,-461
+-714,465,-776
+-743,427,-804
+-660,-479,-426
+832,-632,460
+927,-485,-438
+408,393,-506
+466,436,-512
+110,16,151
+-258,-428,682
+-393,719,612
+-211,-452,876
+808,-476,-593
+-575,615,604
+-485,667,467
+-680,325,-822
+-627,-443,-432
+872,-547,-609
+833,512,582
+807,604,487
+839,-516,451
+891,-625,532
+-652,-548,-490
+30,-46,-14
 "#,
         )
     }
