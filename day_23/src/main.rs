@@ -20,13 +20,20 @@ enum RoomState {
     RemoveNext(usize),
 }
 
+#[derive(Copy, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+enum BoardSize {
+    Small = 2,
+    Big = 4,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 struct Board {
+    size: BoardSize,
     hallway: [Color; 11],
-    a: [Color; 2],
-    b: [Color; 2],
-    c: [Color; 2],
-    d: [Color; 2],
+    a: [Color; 4],
+    b: [Color; 4],
+    c: [Color; 4],
+    d: [Color; 4],
 }
 
 impl Board {
@@ -56,7 +63,7 @@ impl Board {
     }
 
     fn room_state(&self, color: &Color) -> RoomState {
-        let room = self.room_for_color(color);
+        let room = &self.room_for_color(color)[0..self.size as usize];
 
         if room.iter().all(|c| c == color) {
             return RoomState::Full;
@@ -115,7 +122,7 @@ impl Board {
         }
     }
 
-    fn room_for_color(&self, color: &Color) -> [Color; 2] {
+    fn room_for_color(&self, color: &Color) -> [Color; 4] {
         match color {
             Color::A => self.a,
             Color::B => self.b,
@@ -126,35 +133,34 @@ impl Board {
     }
 
     fn color_is_happy(&self, color: &Color) -> bool {
-        self.room_for_color(&color).iter().all(|c| c == color)
+        match self.room_state(color) {
+            RoomState::Full => true,
+            RoomState::ReadyAt(_) => !self.hallway.iter().any(|c| c == color),
+            RoomState::RemoveNext(_) => false,
+        }
     }
 
     fn room_is_ready(&self, color: &Color) -> Option<usize> {
-        let room = self.room_for_color(&color);
-        if room.iter().all(|c| c == &Color::None || c == color) {
-            if let Some((i, _)) = room
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| c == &&Color::None)
-                .last()
-            {
-                Some(i)
-            } else {
-                None
-            }
-        } else {
-            None
+        match self.room_state(color) {
+            RoomState::ReadyAt(x) => Some(x),
+            _ => None,
         }
     }
 }
 
 fn parse(input: &str) -> Board {
     let mut lines = input.trim().lines().into_iter();
+    let size = match lines.clone().count() {
+        7 => BoardSize::Big,
+        5 => BoardSize::Small,
+        _ => panic!("Unknown board size {}", lines.count()),
+    };
+
     let mut hallway = [Color::None; 11];
-    let mut a = [Color::None; 2];
-    let mut b = [Color::None; 2];
-    let mut c = [Color::None; 2];
-    let mut d = [Color::None; 2];
+    let mut a = [Color::None; 4];
+    let mut b = [Color::None; 4];
+    let mut c = [Color::None; 4];
+    let mut d = [Color::None; 4];
 
     lines.next();
     let hall_chars = lines.next().unwrap().chars().collect::<Vec<char>>();
@@ -198,6 +204,7 @@ fn parse(input: &str) -> Board {
     }
 
     Board {
+        size,
         hallway,
         a,
         b,
@@ -517,17 +524,10 @@ mod tests {
 
         print(&board);
         assert_eq!(&board.hallway, &[Color::None; 11]);
-        assert_eq!(&board.a, &[Color::B, Color::A]);
-        assert_eq!(&board.b, &[Color::C, Color::D]);
-        assert_eq!(&board.c, &[Color::B, Color::C]);
-        assert_eq!(&board.d, &[Color::D, Color::A]);
+        assert_eq!(&board.a, &[Color::B, Color::A, Color::None, Color::None]);
+        assert_eq!(&board.b, &[Color::C, Color::D, Color::None, Color::None]);
+        assert_eq!(&board.c, &[Color::B, Color::C, Color::None, Color::None]);
+        assert_eq!(&board.d, &[Color::D, Color::A, Color::None, Color::None]);
         // panic!("lol");
-    }
-
-    #[test]
-    fn test_parts() {
-        // let input = r#""#;
-        // assert_eq!(part_1(input), 99);
-        // assert_eq!(part_2(input), 99);
     }
 }
