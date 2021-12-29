@@ -385,12 +385,27 @@ fn move_room_to_hallway(
     }
 }
 
-fn estimate_min_cost_to_clear(room_color: &Color, board: &Board) -> u64 {
+fn min_cost_not_recursive(room_color: &Color, board: &Board) -> u64 {
     let mut cost = 0;
     for (i, color) in board.room_for_color(room_color).iter().enumerate() {
         if color != &Color::None {
             cost += (i as u64 + 2) * cost_color(color);
         }
+    }
+    cost
+}
+use itertools::Itertools;
+
+fn estimate_min_cost_to_clear(room_color: &Color, board: &Board) -> u64 {
+    let mut cost = 0;
+    for c in board
+        .room_for_color(room_color)
+        .iter()
+        .filter(|c| c != &&Color::None)
+        .chain([room_color].into_iter())
+        .unique()
+    {
+        cost += min_cost_not_recursive(c, board);
     }
     cost
 }
