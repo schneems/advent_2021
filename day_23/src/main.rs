@@ -15,7 +15,6 @@ enum AmphipodColor {
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 struct Board {
-    last: Option<usize>,
     hallway: [AmphipodColor; 10],
     a: [AmphipodColor; 2],
     b: [AmphipodColor; 2],
@@ -134,9 +133,7 @@ fn parse(input: &str) -> Board {
         index += 1;
     }
 
-    let last = None;
     Board {
-        last,
         hallway,
         a,
         b,
@@ -209,43 +206,36 @@ fn play(board: Board) -> u64 {
             return cost;
         }
 
-        if board.last.is_none() {
-            // Check if any hallway colors can move
-            let colors = board
-                .hallway
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| c != &&AmphipodColor::None && board.room_is_ready(c).is_some())
-                .collect::<Vec<_>>();
+        // Check if any hallway colors can move
+        let hallway_colors = board
+            .hallway
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c != &&AmphipodColor::None && board.room_is_ready(c).is_some())
+            .collect::<Vec<_>>();
 
-            if colors.is_empty() {
-                continue;
-            }
+        let mut next = board.clone();
 
-            let mut next = board.clone();
-            for (index, color) in colors.iter() {
-                if let Some(c_index) = next.room_is_ready(color) {
-                    if let Some(steps) = next.steps_to_door_from(*index) {
-                        next.last = None;
-                        next.hallway[*index] = AmphipodColor::None;
-                        match *color {
-                            AmphipodColor::A => next.a[c_index] = *color.clone(),
-                            AmphipodColor::B => next.b[c_index] = *color.clone(),
-                            AmphipodColor::C => next.c[c_index] = *color.clone(),
-                            AmphipodColor::D => next.d[c_index] = *color.clone(),
-                            AmphipodColor::None => panic!("Nope"),
-                        };
-                        println!("steps {}", steps);
-                        println!("room cost {}", c_index + 1);
+        for (index, color) in hallway_colors.iter() {
+            if let Some(c_index) = next.room_is_ready(color) {
+                if let Some(steps) = next.steps_to_door_from(*index) {
+                    next.hallway[*index] = AmphipodColor::None;
+                    match *color {
+                        AmphipodColor::A => next.a[c_index] = *color.clone(),
+                        AmphipodColor::B => next.b[c_index] = *color.clone(),
+                        AmphipodColor::C => next.c[c_index] = *color.clone(),
+                        AmphipodColor::D => next.d[c_index] = *color.clone(),
+                        AmphipodColor::None => panic!("Nope"),
+                    };
+                    println!("steps {}", steps);
+                    println!("room cost {}", c_index + 1);
 
-                        cost += (steps + c_index as u64 + 1) * cost_color(color);
-                    }
+                    cost += (steps + c_index as u64 + 1) * cost_color(color);
                 }
             }
-
-            frontier.push(Reverse((cost, cost, next)));
-        } else {
         }
+
+        frontier.push(Reverse((cost, cost, next)));
     }
     99
 }
