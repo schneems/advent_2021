@@ -65,31 +65,20 @@ impl Board {
     fn room_state(&self, color: &Color) -> RoomState {
         let room = &self.room_for_color(color)[0..self.size as usize];
 
-        if room.iter().all(|c| c == color) {
-            return RoomState::Full;
+        if let Some((i, found_color)) = room.iter().enumerate().rev().find(|(i, c)| c != &color) {
+            match found_color {
+                Color::None => RoomState::ReadyAt(i),
+                _ => RoomState::RemoveNext(
+                    room.iter()
+                        .enumerate()
+                        .find(|(i, c)| c != &&Color::None)
+                        .unwrap()
+                        .0,
+                ),
+            }
+        } else {
+            RoomState::Full
         }
-
-        if room.iter().all(|c| c == color || c == &Color::None) {
-            return RoomState::ReadyAt(
-                room.iter()
-                    .enumerate()
-                    .rev()
-                    .find(|(_, c)| c == &&Color::None)
-                    .unwrap()
-                    .0,
-            );
-        }
-
-        // Full,
-        // ReadyAt(u8),
-        // RemoveNext(u8),
-        RoomState::RemoveNext(
-            room.iter()
-                .enumerate()
-                .find(|(_, c)| c != &&Color::None)
-                .unwrap()
-                .0,
-        )
     }
 
     fn door_index(&self, color: &Color) -> usize {
