@@ -13,6 +13,13 @@ enum Color {
     None,
 }
 
+#[derive(Copy, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+enum RoomState {
+    Full,
+    ReadyAt(usize),
+    RemoveNext(usize),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 struct Board {
     hallway: [Color; 10],
@@ -23,6 +30,36 @@ struct Board {
 }
 
 impl Board {
+    fn room_state(&self, color: &Color) -> RoomState {
+        let room = self.room_for_color(color);
+
+        if room.iter().all(|c| c == color) {
+            return RoomState::Full;
+        }
+
+        if room.iter().all(|c| c == color || c == &Color::None) {
+            return RoomState::ReadyAt(
+                room.iter()
+                    .enumerate()
+                    .rev()
+                    .find(|(_, c)| c == &&Color::None)
+                    .unwrap()
+                    .0,
+            );
+        }
+
+        // Full,
+        // ReadyAt(u8),
+        // RemoveNext(u8),
+        RoomState::RemoveNext(
+            room.iter()
+                .enumerate()
+                .find(|(i, c)| c != &color && c != &&Color::None)
+                .unwrap()
+                .0,
+        )
+    }
+
     fn door_index(&self, color: &Color) -> usize {
         match color {
             Color::A => 2,
@@ -70,14 +107,16 @@ impl Board {
     fn room_is_ready(&self, color: &Color) -> Option<usize> {
         let room = self.room_for_color(&color);
         if room.iter().all(|c| c == &Color::None || c == color) {
-            let (i, _) = room
+            if let Some((i, _)) = room
                 .iter()
                 .enumerate()
                 .filter(|(_, c)| c == &&Color::None)
                 .last()
-                .unwrap();
-
-            Some(i)
+            {
+                Some(i)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -235,7 +274,7 @@ fn move_room_to_hallway(
         (Color::C, board.c),
         (Color::D, board.d),
     ] {
-        if board.color_is_happy(&room_color) {
+        if board.room_is_ready(&room_color).is_some() {
             continue;
         }
 
@@ -249,6 +288,8 @@ fn move_room_to_hallway(
             maybe_move.push(result);
         }
     }
+
+    if maybe_move.is_empty() {}
 }
 
 fn play(board: Board) -> u64 {
@@ -267,7 +308,8 @@ fn play(board: Board) -> u64 {
 
         let mut next = board.clone();
         move_hallway_to_room(&mut hueristic, &mut cost, &mut next);
-        move_room_to_hallway(hueristic, cost, &board, &mut frontier);
+        // move_room_to_hallway(hueristic, cost, &board, &mut frontier);
+        frontier.push(Reverse((hueristic, cost, next.clone())));
 
         // if board != next {
         //     frontier.push(Reverse((cost, cost, next)));
@@ -302,7 +344,24 @@ mod tests {
 "#,
         );
 
-        assert_eq!(play(board), 400);
+        assert_eq!(board.room_state(&Color::A), RoomState::Full);
+        assert_eq!(board.room_state(&Color::B), RoomState::RemoveNext(0));
+        assert_eq!(board.room_state(&Color::C), RoomState::ReadyAt(0));
+        assert_eq!(board.room_state(&Color::D), RoomState::Full);
+        // assert_eq!(play(board), 400);
+
+        let board = parse(
+            r#"
+#############
+#...C.......#
+###A#C#.#D###
+  #A#B#B#D#
+  #########
+"#,
+        );
+
+        assert_eq!(board.room_state(&Color::B), RoomState::RemoveNext(0));
+        assert_eq!(board.room_state(&Color::C), RoomState::RemoveNext(1));
     }
 
     #[test]
