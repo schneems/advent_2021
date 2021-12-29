@@ -235,6 +235,7 @@ fn expand_board(input: &str) -> String {
         "  #D#C#B#A#".to_string(),
         "  #D#B#A#C#".to_string(),
         lines.next().unwrap().to_string(),
+        "  #########".to_string(),
     ]
     .join("\n")
 }
@@ -421,6 +422,7 @@ mod tests {
   #D#C#B#A#
   #D#B#A#C#
   #A#D#C#A#
+  #########
 "#
             .trim()
         )
