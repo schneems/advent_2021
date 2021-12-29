@@ -192,6 +192,28 @@ fn print(board: &Board) {
     println!("###########");
 }
 
+fn move_hallway_to_room(board: &mut Board, cost: &mut u64, heuristic: &mut u64) {
+    let can_move = board
+        .hallway
+        .iter()
+        .enumerate()
+        .filter_map(|(i, c)| {
+            if let Some(c_index) = board.room_is_ready(c) {
+                Some((i, c_index, c))
+            } else {
+                None
+            }
+        })
+        .find_map(|(index, c_index, c)| {
+            if let Some(steps) = board.steps_to_door_from(index) {
+                Some((index, c_index, steps, c))
+            } else {
+                None
+            }
+        });
+    if let Some((index, c_index, steps, c)) = can_move {}
+}
+
 fn play(board: Board) -> u64 {
     let mut frontier = BinaryHeap::new();
     frontier.push(Reverse((0, 0, board.clone())));
@@ -216,6 +238,7 @@ fn play(board: Board) -> u64 {
 
         let mut next = board.clone();
 
+        // Move from hall into rooms
         for (index, color) in hallway_colors.iter() {
             if let Some(c_index) = next.room_is_ready(color) {
                 if let Some(steps) = next.steps_to_door_from(*index) {
@@ -235,7 +258,9 @@ fn play(board: Board) -> u64 {
             }
         }
 
-        frontier.push(Reverse((cost, cost, next)));
+        if board != next {
+            frontier.push(Reverse((cost, cost, next)));
+        }
     }
     99
 }
@@ -253,6 +278,21 @@ fn cost_color(color: &AmphipodColor) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_room_to_hallway() {
+        let board = parse(
+            r#"
+#############
+#...B.......#
+###A#C#.#D###
+  #A#B#C#D#
+  #########
+"#,
+        );
+
+        assert_eq!(play(board), 400);
+    }
 
     #[test]
     fn test_endgame() {
@@ -301,6 +341,18 @@ mod tests {
         assert_eq!(board.steps_to_door_from(0).unwrap(), 2);
         assert_eq!(board.room_is_ready(&AmphipodColor::A).unwrap(), 1);
         assert_eq!(play(board), 12);
+
+        let board = parse(
+            r#"
+#############
+#A......D.A.#
+###.#B#C#.###
+  #.#B#C#D#
+  #########
+"#,
+        );
+
+        assert_eq!(play(board), 2012);
     }
 
     #[test]
