@@ -222,6 +222,35 @@ fn move_hallway_to_room(_heuristic: &mut u64, cost: &mut u64, board: &mut Board)
     }
 }
 
+fn move_room_to_hallway(
+    _heuristic: u64,
+    cost: u64,
+    board: &Board,
+    frontier: &mut BinaryHeap<Reverse<(u64, u64, Board)>>,
+) {
+    let mut maybe_move = Vec::new();
+    for (room_color, buffer) in [
+        (Color::A, board.a),
+        (Color::B, board.b),
+        (Color::C, board.c),
+        (Color::D, board.d),
+    ] {
+        if board.color_is_happy(&room_color) {
+            continue;
+        }
+
+        if let Some(result) = buffer.into_iter().enumerate().find_map(|(i, c)| {
+            if c != Color::None {
+                Some((i, room_color))
+            } else {
+                None
+            }
+        }) {
+            maybe_move.push(result);
+        }
+    }
+}
+
 fn play(board: Board) -> u64 {
     let mut frontier = BinaryHeap::new();
     frontier.push(Reverse((0, 0, board.clone())));
@@ -238,10 +267,11 @@ fn play(board: Board) -> u64 {
 
         let mut next = board.clone();
         move_hallway_to_room(&mut hueristic, &mut cost, &mut next);
+        move_room_to_hallway(hueristic, cost, &board, &mut frontier);
 
-        if board != next {
-            frontier.push(Reverse((cost, cost, next)));
-        }
+        // if board != next {
+        //     frontier.push(Reverse((cost, cost, next)));
+        // }
     }
     99
 }
