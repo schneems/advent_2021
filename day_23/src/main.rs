@@ -192,33 +192,41 @@ fn print(board: &Board) {
     println!("###########");
 }
 
-fn move_hallway_to_room(board: &mut Board, cost: &mut u64, heuristic: &mut u64) {
+fn move_hallway_to_room(_heuristic: &mut u64, cost: &mut u64, board: &mut Board) {
     let can_move = board
         .hallway
         .iter()
         .enumerate()
-        .filter_map(|(i, c)| {
-            if let Some(c_index) = board.room_is_ready(c) {
-                Some((i, c_index, c))
-            } else {
-                None
-            }
-        })
+        .filter(|(_, c)| c != &&AmphipodColor::None)
+        .filter_map(|(i, c)| board.room_is_ready(c).map(|c_index| (i, c_index, c)))
         .find_map(|(index, c_index, c)| {
-            if let Some(steps) = board.steps_to_door_from(index) {
-                Some((index, c_index, steps, c))
-            } else {
-                None
-            }
+            board
+                .steps_to_door_from(index)
+                .map(|steps| (index, c_index, steps, c))
         });
-    if let Some((index, c_index, steps, c)) = can_move {}
+
+    if let Some((index, c_index, steps, color)) = can_move {
+        *cost += (steps + c_index as u64 + 1) * cost_color(color);
+        match *color {
+            AmphipodColor::A => board.a[c_index] = color.clone(),
+            AmphipodColor::B => board.b[c_index] = color.clone(),
+            AmphipodColor::C => board.c[c_index] = color.clone(),
+            AmphipodColor::D => board.d[c_index] = color.clone(),
+            AmphipodColor::None => panic!("Nope"),
+        };
+        board.hallway[index] = AmphipodColor::None;
+
+        println!("steps {}", steps);
+        println!("room cost {}", c_index + 1);
+        move_hallway_to_room(_heuristic, cost, board);
+    }
 }
 
 fn play(board: Board) -> u64 {
     let mut frontier = BinaryHeap::new();
     frontier.push(Reverse((0, 0, board.clone())));
 
-    while let Some(Reverse((_h, mut cost, board))) = frontier.pop() {
+    while let Some(Reverse((mut hueristic, mut cost, board))) = frontier.pop() {
         print(&board);
         if board.color_is_happy(&AmphipodColor::A)
             && board.color_is_happy(&AmphipodColor::B)
@@ -228,35 +236,8 @@ fn play(board: Board) -> u64 {
             return cost;
         }
 
-        // Check if any hallway colors can move
-        let hallway_colors = board
-            .hallway
-            .iter()
-            .enumerate()
-            .filter(|(_, c)| c != &&AmphipodColor::None && board.room_is_ready(c).is_some())
-            .collect::<Vec<_>>();
-
         let mut next = board.clone();
-
-        // Move from hall into rooms
-        for (index, color) in hallway_colors.iter() {
-            if let Some(c_index) = next.room_is_ready(color) {
-                if let Some(steps) = next.steps_to_door_from(*index) {
-                    next.hallway[*index] = AmphipodColor::None;
-                    match *color {
-                        AmphipodColor::A => next.a[c_index] = *color.clone(),
-                        AmphipodColor::B => next.b[c_index] = *color.clone(),
-                        AmphipodColor::C => next.c[c_index] = *color.clone(),
-                        AmphipodColor::D => next.d[c_index] = *color.clone(),
-                        AmphipodColor::None => panic!("Nope"),
-                    };
-                    println!("steps {}", steps);
-                    println!("room cost {}", c_index + 1);
-
-                    cost += (steps + c_index as u64 + 1) * cost_color(color);
-                }
-            }
-        }
+        move_hallway_to_room(&mut hueristic, &mut cost, &mut next);
 
         if board != next {
             frontier.push(Reverse((cost, cost, next)));
